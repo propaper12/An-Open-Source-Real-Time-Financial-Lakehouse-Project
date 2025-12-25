@@ -99,14 +99,18 @@ docker exec -it dbt_transformer dbt run
 To simulate a fake company sending data to the API:
 python fake_company.py
 
+📂 Project Structure
+Plaintext
+
+financial-lakehouse/
 ├── dags/                   # Airflow DAGs (MLOps pipelines)
 ├── dbt_project/            # dbt models for Gold Layer transformation
 ├── ingestion_api.py        # FastAPI Gateway source code
 ├── producer.py             # Binance WebSocket producer
 ├── process_silver.py       # Spark Streaming & Inference logic
 ├── consumer_lake.py        # Bronze Layer ingestion logic
-├── train_model.py          # ML Training script
-├── dashboard.py            # Streamlit Control Plane
+├── train_model.py          # ML Training script (RandomForest, LinearReg)
+├── dashboard.py            # Streamlit Control Plane & Visualization
 ├── docker-compose.yaml     # Infrastructure definition
 └── requirements.txt        # Python dependencies
 
