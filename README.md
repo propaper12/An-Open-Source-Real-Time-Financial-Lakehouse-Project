@@ -97,21 +97,19 @@ Bash
 docker exec -it dbt_transformer dbt run
 3. Simulating External Data
 To simulate a fake company sending data to the API:
-
-Bash
-
 python fake_company.py
-📂 Project Structure
+
 ├── dags/                   # Airflow DAGs (MLOps pipelines)
 ├── dbt_project/            # dbt models for Gold Layer transformation
 ├── ingestion_api.py        # FastAPI Gateway source code
 ├── producer.py             # Binance WebSocket producer
 ├── process_silver.py       # Spark Streaming & Inference logic
 ├── consumer_lake.py        # Bronze Layer ingestion logic
-├── train_model.py          # ML Training script (RandomForest, LinearReg)
+├── train_model.py          # ML Training script
 ├── dashboard.py            # Streamlit Control Plane
 ├── docker-compose.yaml     # Infrastructure definition
 └── requirements.txt        # Python dependencies
+
 🔧 Troubleshooting
 Kafka Connection Error: Kafka takes about 30-60 seconds to elect a leader after startup. If the producer fails, wait a minute and restart it.
 
