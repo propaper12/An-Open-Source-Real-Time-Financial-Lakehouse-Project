@@ -51,9 +51,11 @@ The system consists of 5 main layers managed by Docker Compose:
 * Git
 * 8GB+ RAM recommended
 
+
+
 ### 1. Installation
 Clone the repository:
-```bash
+bash
 git clone [https://github.com/your-username/financial-lakehouse.git](https://github.com/your-username/financial-lakehouse.git)
 cd financial-lakehouse
 ### 2. Build & Run
