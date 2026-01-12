@@ -1,6 +1,7 @@
 # Enterprise Real-Time Lakehouse & MLOps Platform
 
 Bu platform; Binance WebSocket ve özel API kanallarından gelen canlı market verilerini işleyen, **Delta Lake** mimarisi üzerinde depolayan, **Spark MLlib** ile yapay zeka modelleri eğiten ve **dbt** ile profesyonel analitik katmanlar oluşturan uçtan uca bir veri mühendisliği iskeletidir.
+<img width="8192" height="1912" alt="Untitled diagram-2026-01-12-172902" src="https://github.com/user-attachments/assets/e2975ffb-1d66-4144-a29a-80cd2f462182" />
 
 ----------
 
@@ -155,3 +156,18 @@ Bu proje bir **YBS öğrencisi** tarafından geliştirilmiş açık kaynaklı bi
 -   **LinkedIn:** [Profil Linkini Buraya Yapıştır]
     
 -   **Destek:** Proje size yardımcı olduysa bir ⭐ bırakmayı unutmayın!
+- ### 3. Katılımcılara Özel Kod Talimatı
+
+Kendi branch'inizi açın, ama benim `main`'ime dokunmayın."
+
+Bash
+```
+# 1. Önce projeyi yerele indir
+git clone https://github.com/propaper12/An-Open-Source-Real-Time-Financial-Lakehouse-Project.git
+
+# 2. Kendi adınıza veya özelliğinize göre yeni bir branch açın
+git checkout -b dev/herhangi_isim
+
+# 3. Geliştirmenizi yapın ve sadece bu branch'e pushlayın
+git push origin dev/herhangi_isim
+```
