@@ -12,8 +12,6 @@ import os
 import numpy as np
 from datetime import datetime
 
-# --- KONFİGÜRASYON ---
-# MinIO S3 API portu 9000, Browser Console portu 9001
 MINIO_URL = os.getenv("MINIO_URL", "http://minio:9000") 
 MINIO_CONSOLE_URL = "http://localhost:9001"
 MLFLOW_URL = "http://localhost:5000"
@@ -23,10 +21,8 @@ SECRET_KEY = "admin12345"
 BUCKET_NAME = "market-data"
 SILVER_PATH = "silver_layer_delta"
 
-# Sayfa Genişlik ve Tema Ayarı
 st.set_page_config(page_title="Ultimate DataFlow Terminal", layout="wide", page_icon="🏗️")
 
-# CSS ile Karanlık Tema ve Kart Tasarımı
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e14; color: #e1e4e8; }
@@ -41,7 +37,6 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- VERİ VE SİSTEM FONKSİYONLARI ---
 def get_db_conn():
     return psycopg2.connect(host="postgres", database="market_db", user="admin", password="admin", port="5432")
 
@@ -50,19 +45,16 @@ def get_s3_fs():
 
 def add_indicators(df):
     if len(df) < 20: return df
-    # RSI
     delta = df['average_price'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     df['RSI'] = 100 - (100 / (1 + (gain / loss)))
-    # Bollinger
     df['MA20'] = df['average_price'].rolling(window=20).mean()
     df['std'] = df['average_price'].rolling(window=20).std()
     df['Upper'] = df['MA20'] + (df['std'] * 2)
     df['Lower'] = df['MA20'] - (df['std'] * 2)
     return df
 
-# --- SIDEBAR: KONTROL MERKEZİ ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/8297/8297332.png", width=80)
     st.title("Admin Ops Center")
@@ -82,10 +74,8 @@ with st.sidebar:
         os.system("docker exec dbt_transformer dbt run &")
         st.toast("PostgreSQL Tabloları Güncelleniyor...")
 
-# --- ANA EKRAN ---
 st.title("🚀 Enterprise MLOps & Real-Time Lakehouse")
 
-# Veri Yükleme
 try:
     fs = get_s3_fs()
     files = fs.glob(f"s3://{BUCKET_NAME}/{SILVER_PATH}/**/*.parquet")
@@ -96,25 +86,21 @@ except:
     st.error("MinIO veya Spark verisi bulunamadı. Lütfen sistemleri başlatın.")
     st.stop()
 
-# Tablar
 tab_realtime, tab_mlops, tab_gold, tab_infra = st.tabs([
     "📈 Canlı Market & Teknik Analiz", "🤖 MLflow & Model Performansı", "🏆 dbt Gold Layer", "📟 Sistem Mimarisi & Sağlık"
 ])
 
-# --- TAB 1: CANLI MARKET ---
 with tab_realtime:
     selected_sym = st.selectbox("Sembol Seçin", df['symbol'].unique())
     df_sub = df[df['symbol'] == selected_sym].tail(100)
     last = df_sub.iloc[-1]
     
-    # Üst Metrikler
     c1, c2, c3, c4 = st.columns(4)
     with c1: st.metric("Anlık Fiyat", f"${last['average_price']:,.2f}", f"{last['average_price']-df_sub.iloc[-2]['average_price']:.2f}")
     with c2: st.metric("AI Tahmini", f"${last['predicted_price']:,.2f}")
     with c3: st.metric("RSI (14)", f"{last.get('RSI', 0):.2f}")
     with c4: st.metric("Volatilite (Spark)", f"{last['volatility']:.6f}")
 
-    # Gelişmiş Grafik
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df_sub['processed_time'], y=df_sub['Upper'], name="Bollinger Üst", line=dict(color='rgba(255,255,255,0.1)')))
     fig.add_trace(go.Scatter(x=df_sub['processed_time'], y=df_sub['Lower'], name="Bollinger Alt", fill='tonexty', line=dict(color='rgba(255,255,255,0.1)')))
@@ -123,7 +109,6 @@ with tab_realtime:
     fig.update_layout(height=600, template="plotly_dark", title=f"{selected_sym} Detaylı AI Analizi")
     st.plotly_chart(fig, use_container_width=True)
 
-# --- TAB 2: MLflow & MLOps ---
 with tab_mlops:
     st.subheader("🤖 MLflow Model Tracking & Accuracy")
     df['Error'] = (df['average_price'] - df['predicted_price']).abs()
@@ -138,7 +123,6 @@ with tab_mlops:
         fig_err = px.histogram(df, x="Error", nbins=30, title="MAE Distribution")
         st.plotly_chart(fig_err, use_container_width=True)
 
-# --- TAB 3: dbt GOLD LAYER ---
 with tab_gold:
     st.subheader("🏆 dbt Analytics - PostgreSQL Gold Katmanı")
     try:
@@ -155,11 +139,9 @@ with tab_gold:
     except:
         st.warning("dbt tabloları yükleniyor... Lütfen Airflow üzerinden dbt job'ını kontrol edin.")
 
-# --- TAB 4: SİSTEM SAĞLIĞI ---
 with tab_infra:
     st.subheader("📟 Uçtan Uca Boru Hattı İzleme")
     
-    # Kaynak Kullanımı
     i1, i2, i3 = st.columns(3)
     i1.metric("Sunucu CPU", f"%{psutil.cpu_percent()}")
     i2.metric("Sunucu RAM", f"%{psutil.virtual_memory().percent}")
