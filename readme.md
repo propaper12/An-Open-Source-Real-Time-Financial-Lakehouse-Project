@@ -1,66 +1,157 @@
-# 🚀 Real-Time Financial Lakehouse & MLOps Platform
+# Enterprise Real-Time Lakehouse & MLOps Platform
 
-![Python](https://img.shields.io/badge/Python-3.9-blue?style=for-the-badge&logo=python&logoColor=white)
-![Apache Spark](https://img.shields.io/badge/Apache_Spark-Streaming_%26_ML-orange?style=for-the-badge&logo=apachespark&logoColor=white)
-![Kafka](https://img.shields.io/badge/Apache_Kafka-Event_Streaming-black?style=for-the-badge&logo=apachekafka&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Delta Lake](https://img.shields.io/badge/Delta_Lake-Storage-adventure?style=for-the-badge&logo=delta&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-Interactive_Dashboard-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
+Bu platform; Binance WebSocket ve özel API kanallarından gelen canlı market verilerini işleyen, **Delta Lake** mimarisi üzerinde depolayan, **Spark MLlib** ile yapay zeka modelleri eğiten ve **dbt** ile profesyonel analitik katmanlar oluşturan uçtan uca bir veri mühendisliği iskeletidir.
 
-## 📖 Project Overview (Proje Özeti)
+----------
 
-**Real-Time Financial Lakehouse**, kripto para piyasalarından (Binance) ve simüle edilmiş şirket API'lerinden akan veriyi milisaniyeler içinde işleyen, analiz eden ve yapay zeka modelleriyle anlık fiyat tahmini yapan uçtan uca (End-to-End) bir büyük veri projesidir.
+## 🏗️ Mimari Tasarım (Architecture)
 
-Bu proje, **Modern Data Stack (MDS)** prensiplerine uygun olarak; Lambda mimarisi yerine **Lakehouse** mimarisi üzerine kurulmuştur. Veri ingestion, stream processing, machine learning inference ve raporlama katmanlarını tek bir Docker ortamında birleştirir.
+Sistem, verinin ham halden alınarak anlamlı iş zekası raporlarına dönüşmesine kadar 5 ana katmandan oluşur:
 
----
 
-## 🏗️ Architecture (Mimari)
 
-Proje, verinin yolculuğunu 5 ana katmanda ele alır:
 
-1.  **Ingestion Layer:**
-    * **Binance WebSocket:** Canlı BTC/USDT ticaret verilerini (Trade Streams) anlık olarak yakalar.
-    * **FastAPI Gateway:** Harici kaynaklardan gelen POST isteklerini karşılar ve Kafka'ya iletir.
-    * **Apache Kafka:** Yüksek hacimli veriyi tamponlamak (buffering) için mesaj kuyruğu olarak çalışır.
+Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa edilmiştir. Aşağıda, sistemin omurgasını oluşturan dosyaların detaylı açıklamalarını bulabilirsiniz:
 
-2.  **Storage Layer (The Lakehouse):**
-    * **MinIO (S3 Compatible):** Veriler **Delta Lake** formatında (Bronze, Silver, Gold katmanları) saklanır.
-        * *Bronze:* Ham veri (Raw).
-        * *Silver:* Temizlenmiş, zenginleştirilmiş ve ML tahmini yapılmış veri.
-        * *Gold:* İş analitiğine hazır, dbt ile dönüştürülmüş veri.
+#### 📥 Veri Girişi ve API (Ingestion)
 
-3.  **Processing & ML Layer:**
-    * **Apache Spark Streaming:** Kafka'dan okunan veriyi işler.
-    * **Spark MLlib:** Eğitilmiş modelleri (Random Forest, Linear Regression) belleğe yükler ve akan veriye canlı olarak fiyat tahmini (Inference) yapar.
-    * **MLOps:** Airflow ile modellerin performansını izler ve otomatik yeniden eğitim (Retraining) süreçlerini yönetir.
+-   🚀 **`producer.py`**: Binance WebSocket API'sine bağlanarak canlı piyasa verilerini (Trade) yakalar ve **Apache Kafka**'ya "raw-trades" topic'i üzerinden asenkron olarak basır.
+    
+-   ⚡ **`ingestion_api.py`**: FastAPI tabanlı bir gateway'dir. Dış kurumsal kaynaklardan (örneğin Tesla) gelen verileri kabul eder ve Kafka'ya yönlendirir.
+    
+-   🏢 **`fake_company.py`**: Sistemi test etmek için geliştirilmiş bir simülatördür. Kendi şirket verileriniz varmış gibi FastAPI üzerinden sisteme veri gönderir.
+    
 
-4.  **Serving & BI Layer:**
-    * **PostgreSQL:** Düşük gecikmeli sorgular için sonuçların yazıldığı operasyonel veritabanı.
-    * **Streamlit Dashboard:** Sistemin canlı izlendiği, Docker konteynerlarının yönetildiği ve analizlerin sunulduğu kontrol paneli.
+#### ⚙️ Veri İşleme ve Storage (Processing & Lakehouse)
 
----
+-   🌊 **`process_silver.py`**: Sistemin ana motoru (Spark Streaming). Kafka'dan veriyi okur, şema doğrulaması yapar, **Spark ML** modellerini kullanarak "In-flight" tahminleme yapar ve sonuçları **Delta Lake Silver** katmanına yazar.
+    
+-   🥉 **`consumer_lake.py`**: Kafka'dan gelen ham verileri hiçbir değişikliğe uğratmadan **Delta Lake Bronze** katmanına (Raw Data) yazar; veri geçmişinin korunmasını (Audit) sağlar.
+    
+-   🏗️ **`dbt_project/`**: Verinin Silver'dan Gold katmanına (Analitik katman) dönüşümü için gerekli SQL modellerini içerir. Veri temizleme ve aggregation işlemleri burada döner.
+    
 
-## 🛠️ Tech Stack (Teknoloji Yığını)
+#### 🧠 MLOps ve Otomasyon (Orchestration)
 
-| Category | Technologies |
-|----------|--------------|
-| **Language** | Python 3.9, SQL |
-| **Ingestion** | Apache Kafka, WebSocket, FastAPI |
-| **Processing** | Apache Spark (PySpark), Spark Streaming |
-| **Storage** | MinIO (S3), Delta Lake, PostgreSQL |
-| **Orchestration** | Apache Airflow, Docker Compose |
-| **Transformation** | dbt (Data Build Tool) |
-| **Visualization** | Streamlit, Plotly |
-| **DevOps** | Docker, Git |
+-   🧪 **`train_model.py`**: Delta Lake'deki geçmiş verileri kullanarak model eğitir. **MLflow** ile entegre çalışarak her eğitimdeki metrikleri (RMSE, MAE vb.) ve model dosyalarını kayıt altına alır.
+    
+-   📅 **`dags/`**: **Apache Airflow** tarafından kullanılan DAG dosyalarıdır. Modellerin haftalık yeniden eğitilmesi veya dbt dönüşümlerinin periyodik çalışması burada planlanır.
+    
 
----
+#### 🖥️ Arayüz ve Altyapı (UI & DevOps)
 
-## 🚀 Installation & Setup (Kurulum)
+-   📊 **`dashboard.py`**: **Streamlit** ile geliştirilmiş komuta merkezidir. Canlı fiyat akışını, yapay zeka tahminlerini ve sistem sağlığını görselleştirir.
+    
+-   🐳 **`docker-compose.yaml`**: Tüm ekosistemi (Kafka, Spark, Airflow, MinIO, Postgres vb.) birbirine bağlı ve izole bir şekilde ayağa kaldıran ana orkestrasyon dosyasıdır.
+    
+-   📦 **`Dockerfile` / `Dockerfile.spark`**: Spark ve API gibi özel servislerin çalışması için gerekli kütüphane ve bağımlılıkların (Python, Java, Delta Jar) tanımlandığı paketleme dosyalarıdır.
+    
+-   📑 **`requirements.txt`**: Projenin çalışması için gerekli tüm Python kütüphanelerinin (PySpark, Kafka-Python, Delta-Spark, FastAPI) listesidir.
+----------
+## 🛠️ Kurulum ve Çalıştırma Rehberi
+### 1. Sistemi Başlatma
 
-Bu projeyi yerel makinenizde çalıştırmak için **Docker** ve **Docker Compose** yüklü olmalıdır.
+Docker konteynerlerini (Kafka, Spark, Airflow, Postgres, MinIO vb.) derler ve arka planda çalıştırır:
+Bash
+```
+docker-compose up -d --build
+```
+### 2. Şirket Veri Simülasyonunu Başlatma
 
-### 1. Projeyi Klonlayın
-```bash
-git clone [https://github.com/kullaniciadi/financial-lakehouse.git](https://github.com/kullaniciadi/financial-lakehouse.git)
-cd financial-lakehouse
+Özel şirket akışını tetiklemek (Tesla vb.) ve API'yi test etmek için:
+Bash
+```
+python fake_company.py
+```
+
+### 3. AI Modellerini Eğitme
+
+Sistemde yeterli veri biriktikten sonra modelleri eğitmek ve MLflow'a kaydetmek için:
+Bash
+```
+docker exec spark-silver python train_model.py
+```
+
+### 4. dbt Dönüşümlerini Çalıştırma
+Verileri PostgreSQL Gold katmanına dönüştürmek ve analitik hazırlık yapmak için:
+Bash
+```
+docker exec dbt_transformer dbt run
+```
+
+----------
+
+## 📊 İzleme ve Analiz Panelleri
+
+**Servis Port Kullanım Amacı**
+
+**Streamlit Dashboard**:
+`http://localhost:8501` Canlı Teknik Analiz & AI Tahmin Bandı.
+
+**Metabase BI**
+`http://localhost:3005/`Kurumsal SQL Raporlama & Business Intelligence.
+
+**MLflow**
+`http://localhost:5000/`Model Versiyonlama ve Performans Takibi.
+
+**Airflow UI**
+`http://localhost:8081`Pipeline Otomasyonu ve DAG Yönetimi.
+
+**MinIO Console**
+`http://localhost:9001`S3 Lakehouse Veri Görüntüleyici.
+
+**Grafana**
+`http://localhost:3001/`Sistem Sağlığı ve Altyapı İzleme.
+
+**CAdvisor**
+`http://localhost:8090/containers/`
+
+**API Docs**
+`http://localhost:8000/docs`FastAPI Swagger Dokümantasyonu.
+
+----------
+
+## 👨‍💻 Geliştirici Notları (Ops & Debug)
+
+### **Kodlarda değişiklik yaptığında tüm sistemi kapatıp açmana gerek yok.**
+
+örnek:Konteyneri durdurmadan dashboard kodunu güncellemek için:
+Bash
+```
+docker cp dashboard.py dashboard:/app/dashboard.py
+docker restart dashboard
+```
+### **Köklü Değişiklik veya Kütüphane Eklediysen (Dockerfile).**
+Bash
+```
+docker-compose up -d --build
+```
+
+### **Veri Doğrulama (SQL)**
+
+Verilerin doğru yazıldığını PostgreSQL içinden kontrol etmek için:
+Bash
+```
+docker exec -it postgres psql -U admin -d market_db -c "SELECT * FROM crypto_prices LIMIT 10;"
+```
+
+### **Roadmap & Gelecek Planları**
+
+-   [ ] GitHub Actions ile CI/CD Pipeline Entegrasyonu.
+    
+-   [ ] Great Expectations ile Data Quality Checks.
+    
+-   [ ] Slack/Telegram üzerinden hata bildirimleri.
+    
+
+----------
+
+## 🤝 Katkıda Bulunun (Contributing)
+
+Bu proje bir **YBS öğrencisi** tarafından geliştirilmiş açık kaynaklı bir framework'tür. Her türlü katkıya, fikre ve PR'a açıktır.
+
+-   **Geliştirici:** Ömer Çakan
+    
+-   **LinkedIn:** [Profil Linkini Buraya Yapıştır]
+    
+-   **Destek:** Proje size yardımcı olduysa bir ⭐ bırakmayı unutmayın!
