@@ -1,0 +1,47 @@
+GÜNCEL SİSTEM YÖNETİM REHBERİ (v2.0 SaaS)
+1. SİSTEMİ BAŞLATMA (Start)
+Tüm altyapıyı (Kafka, Spark, API, Dashboard, Database) tek komutla ayağa kaldırmak için:
+Terminal 1 (Ana Terminal):docker-compose up -d --build
+SİSTEMİ DURDURMA (Stop):docker-compose down
+
+2. VERİ AKIŞINI BAŞLATMA (Ingestion)
+Sistem açıldığında Binance (BTC) verisi otomatik akmaya başlar (producer konteyneri sayesinde).
+Ancak Tesla (Şirket) verisi dışarıdan gelmelidir. Bunu simüle etmek için:
+Terminal 2 (Müşteri Simülasyonu): :python fake_company.py
+
+3. YAPAY ZEKAYI EĞİTME (Training)
+Veriler biriktikçe (örneğin sistem 5-10 dk çalıştıktan sonra),
+her şirket için (BTC, TESLA) ayrı modelleri eğitmek için:
+docker exec spark-silver python train_model.py
+
+4. İZLEME VE KONTROL (Monitoring)
+Tarayıcıdan şu adreslere giderek sistemi izleyebilirsin:
+
+Dashboard (Streamlit): http://localhost:8501
+API Dokümantasyonu (Swagger): http://localhost:8000/docs
+MinIO (Veri Depo - Bucket): http://localhost:9001 
+GRAFANA=http://localhost:3001/
+MLFLOW=http://localhost:5000/
+CAdvisor=http://localhost:8090/containers/
+AirFlow=http://localhost:8081
+METABASE=http://localhost:3005/
+
+5. KOD GÜNCELLEME (Hot Reload / Update)
+Kodlarda değişiklik yaptığında tüm sistemi kapatıp açmana gerek yok.
+ornek:docker cp dashboard.py dashboard:/app/dashboard.py
+docker restart dashboard
+Köklü Değişiklik veya Kütüphane Eklediysen (Dockerfile)
+docker-compose up -d --build
+
+sql kontrol:docker exec -it postgres psql -U admin -d market_db -c "SELECT * FROM crypto_prices LIMIT 5;
+
+SELECT
+    symbol,
+    processed_time,
+    average_price as "Gerçek Fiyat",
+    predicted_price as "AI Tahmini",
+    (predicted_price - average_price) as "Fark"
+FROM crypto_prices
+WHERE symbol = 'BTCUSDT' -- İstersen sembolü değiştirebilirsin
+ORDER BY processed_time DESC
+LIMIT 100;

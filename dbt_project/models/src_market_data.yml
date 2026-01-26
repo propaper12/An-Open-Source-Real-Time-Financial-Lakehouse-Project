@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: public
+    database: market_db
+    schema: public
+    tables:
+      - name: crypto_prices
+        description: "Spark tarafından PostgreSQL'e yazılan ham market ve tahmin verileri"
+        columns:
+          - name: symbol
+            tests:
+              - not_null
+          - name: processed_time
+            tests:
+              - not_null

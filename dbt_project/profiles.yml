@@ -1,0 +1,12 @@
+crypto_lakehouse:  # dbt_project.yml içindeki profile adıyla aynı olmalı
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: postgres      # docker-compose'daki servis adı
+      user: admin
+      password: admin
+      port: 5432
+      dbname: market_db   # Senin oluşturduğun veritabanı
+      schema: public
+      threads: 4
