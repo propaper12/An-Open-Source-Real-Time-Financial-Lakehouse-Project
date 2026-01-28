@@ -32,11 +32,8 @@ services:
       resources:
         limits:
           memory: 1g
-<<<<<<< HEAD
     volumes:
       - kafka_data:/bitnami/kafka      
-=======
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
 
   # 3. MINIO
   minio:
@@ -44,36 +41,21 @@ services:
     container_name: minio
     ports: ["9000:9000", "9001:9001"]
     environment:
-<<<<<<< HEAD
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: admin12345
     command: server /data --console-address ":9001"
     volumes:
       - ./minio_data:/data
-=======
-      MINIO_ROOT_USER: admin          # <-- Python koduyla eşitledik
-      MINIO_ROOT_PASSWORD: admin12345 # <-- Python koduyla eşitledik
-    command: server /data --console-address ":9001"
-    volumes:
-      - ./minio_data:/data  # <-- DİKKAT: Bu klasörü aşağıda sileceğiz!
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
     networks: [data-network]
     deploy:
       resources:
         limits:
           memory: 1g
-<<<<<<< HEAD
 
   # 4. PRODUCER (BİNANCE DATA)
   producer:
     build: .
     container_name: binance_producer  # <-- GÜNCELLENDİ: Sabit isim verdik
-=======
-  # 4. PRODUCER
-  producer:
-    build: .
-    container_name: producer
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
     restart: always
     depends_on: [kafka]
     environment:
@@ -121,29 +103,20 @@ services:
     deploy:
       resources:
         limits:
-<<<<<<< HEAD
           memory: 3g
           cpus: '2.0'
-=======
-          memory: 4g
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
 
   # 7. DASHBOARD
   dashboard:
     build: .
     container_name: dashboard
-<<<<<<< HEAD
     command: streamlit run dashboard_app/Home.py --server.port 8501 --server.address 0.0.0.0
-=======
-    command: streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
     ports:
       - "8501:8501"
     depends_on:
       - postgres
       - minio
       - spark-silver
-<<<<<<< HEAD
       - airflow        
       - mlflow         # <--- DÜZELTİLEN KISIM (mlflow_server DEĞİL, mlflow OLACAK)
     env_file:          
@@ -153,12 +126,6 @@ services:
       - AIRFLOW_EXTERNAL_UI=${AIRFLOW_EXTERNAL_UI}
       - MLFLOW_INTERNAL_URI=${MLFLOW_INTERNAL_URI}
       - MLFLOW_EXTERNAL_UI=${MLFLOW_EXTERNAL_UI}
-=======
-    environment:
-      - MINIO_URL=http://minio:9000
-      - POSTGRES_HOST=postgres
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092 
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
     networks:
       - data-network
     deploy:
@@ -167,12 +134,7 @@ services:
           memory: 1g
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-<<<<<<< HEAD
       - ./dashboard_app:/app/dashboard_app
-=======
-      - ./dashboard.py:/app/dashboard.py 
-
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
   # 8. POSTGRES
   postgres:
     image: postgres:15
@@ -187,11 +149,8 @@ services:
       resources:
         limits:
           memory: 1g
-<<<<<<< HEAD
     volumes:
       - postgres_data:/var/lib/postgresql/data
-=======
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
 
   # 9. DBT
   dbt:
@@ -273,10 +232,6 @@ services:
       - grafana_data:/var/lib/grafana
   
   # 14. MLFLOW SERVER
-<<<<<<< HEAD
-=======
-  # 14. MLFLOW SERVER
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.7.1
     container_name: mlflow_server
@@ -304,10 +259,7 @@ services:
     networks:
       - data-network
     restart: always
-<<<<<<< HEAD
 
-=======
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
   # 15. AIRFLOW
   airflow:
     build: 
@@ -345,10 +297,6 @@ networks:
     driver: bridge
 
 volumes:
-<<<<<<< HEAD
   grafana_data:
   kafka_data:
   postgres_data:
-=======
-  grafana_data:
->>>>>>> cda2fd09ebf927cfc7e32d5c77b558c212d4f57c
