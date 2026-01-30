@@ -110,6 +110,9 @@ docker exec dbt_transformer dbt run
 
 **API Docs**
 `http://localhost:8000/docs`FastAPI Swagger Dokümantasyonu.
+**KAFDrop**
+`(http://localhost:9010)`Kafkaya akan verinin izlendiği ekran.
+
 
 ----------
 
