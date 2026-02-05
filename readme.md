@@ -36,18 +36,30 @@ Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa 
 
 #### 🧠 MLOps ve Otomasyon (Orchestration)
 
--   🧪 **`train_model.py`**: Delta Lake'deki geçmiş verileri kullanarak model eğitir. **MLflow** ile entegre çalışarak her eğitimdeki metrikleri (RMSE, MAE vb.) ve model dosyalarını kayıt altına alır.
-    
--   📅 **`dags/`**: **Apache Airflow** tarafından kullanılan DAG dosyalarıdır. Modellerin haftalık yeniden eğitilmesi veya dbt dönüşümlerinin periyodik çalışması burada planlanır.
--* 📅 **`ml_watcher.py`**: Delta Lake üzerindeki satır sayısını izleyerek otomatik eğitim sürecini tetikler.
-* 🐳 **`docker-compose.yaml`**: Tüm ekosistemi (17+ servis) izole ve bağımlılıkları yönetilmiş şekilde ayağa kaldırır.
-    
+ **1️⃣ train_model.py**
+-   **Ne yapıyor:**
+    -   Delta Lake Silver katmanındaki veriyi okur.        
+    -   Feature engineering yapar (`create_smart_features`).        
+    -   4 farklı regresyon modeli (Linear, Decision Tree, Random Forest, GBT) deneyip en iyi modeli seçer.      
+    -   MLflow ile modelin metriğini, parametrelerini ve versiyonunu kaydeder.       
+-   **Nasıl çalışır:** 
+    -   Manuel olarak veya başka bir script üzerinden çağrıldığında çalışır.        
+    -   Checkpoint’i sıfırlamak **zorunlu değil**, ancak streaming state’ini tamamen sıfırlamak istiyorsanız klasörü silersiniz.
 
+ **2️⃣ ml_watcher.py**
+-   **Ne yapıyor:**  
+    -   Delta Lake tablosundaki satır sayısını sürekli kontrol eder.        
+    -   `MIN_ROWS_TO_START` hedefine ulaşıldığında otomatik olarak `train_model.py`’yi çalıştırır.        
+    -   İlk eğitimden sonra belirli aralıklarla (örn. 5 dk) tekrar veri kontrolü yapar ve eğitim tetikler.    
+-   **Nasıl çalışır:**    
+    -   Otomatik tetikleme mekanizmasıdır, yani siz manuel başlatmasanız bile veri geldiğinde eğitim yapılır.      
+    -   Checkpoint silmeden çalışır ve önceki veriyi kaybetmez.
+    
 #### 🖥️ Arayüz ve Altyapı (UI & DevOps)
 
 -   📊 **`dashboard.py`**: **Streamlit** ile geliştirilmiş komuta merkezidir. Canlı fiyat akışını, yapay zeka tahminlerini ve sistem sağlığını görselleştirir.
     
--   🐳 **`docker-compose.yaml`**: Tüm ekosistemi (Kafka, Spark, Airflow, MinIO, Postgres vb.) birbirine bağlı ve izole bir şekilde ayağa kaldıran ana orkestrasyon dosyasıdır.
+-   🐳 **`docker-compose.yaml`**: Tüm ekosistemi (Kafka, Spark, Airflow, MinIO, Postgres vb.) birbirine bağlı ve izole bir şekilde ayağa kaldıran ana orkestrasyon dosyasıdır.Tüm ekosistemi (17+ servis) izole ve bağımlılıkları yönetilmiş şekilde ayağa kaldırır.
     
 -   📦 **`Dockerfile` / `Dockerfile.spark`**: Spark ve API gibi özel servislerin çalışması için gerekli kütüphane ve bağımlılıkların (Python, Java, Delta Jar) tanımlandığı paketleme dosyalarıdır.
     
@@ -59,26 +71,27 @@ Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa 
 Docker konteynerlerini (Kafka, Spark, Airflow, Postgres, MinIO vb.) derler ve arka planda çalıştırır:
 Bash
 ```
-.env adında bır dosya olusturun ilk once ondan sonra asagıdakı kodu calıstırın
+İlk önce .env ile dosya olusturun.
+.env
+```
+```
 docker-compose up -d --build
 ```
-### 2. Şirket Veri Simülasyonunu Başlatma
-
-Özel şirket akışını tetiklemek (Tesla vb.) ve API'yi test etmek için:
-Bash
-```
-python fake_company.py
-```
-
-### 3. AI Modellerini Eğitme
+### 2. AI Modellerini Eğitme
 
 Sistemde yeterli veri biriktikten sonra modelleri eğitmek ve MLflow'a kaydetmek için:
 Bash
 ```
-docker exec -it spark-silver rm -rf /app/checkpoints_silver_v6
+# Checkpoint silmeden eğitim başlatmak
+1.  Manuel olarak:
+docker exec -it spark-silver python train_model.py
+2.  Otomatik olarak:
+docker exec -it spark-silver python ml_watcher.py
+# Checkpoint silerek eğitimi sıfırdan baslatmak
+docker exec -it spark-silver rm -rf /app/checkpoints_silver_1
 ```
 
-### 4. dbt Dönüşümlerini Çalıştırma
+### 3. dbt Dönüşümlerini Çalıştırma
 Verileri PostgreSQL Gold katmanına dönüştürmek ve analitik hazırlık yapmak için:
 Bash
 ```
@@ -185,5 +198,4 @@ git push origin dev/herhangi_isim
 <img width="1095" height="730" alt="Ekran görüntüsü 2026-02-05 171448" src="https://github.com/user-attachments/assets/ab8210ca-9b1c-471c-a487-fc46b80bf481" />
 <img width="1081" height="1280" alt="Ekran görüntüsü 2026-02-05 171440" src="https://github.com/user-attachments/assets/1c3657d4-c6c0-404f-af50-fd1f2c28c2fc" />
 <img width="2793" height="1455" alt="Ekran görüntüsü 2026-02-05 171227" src="https://github.com/user-attachments/assets/22a9d585-84bc-424f-a320-424fc3e17227" />
-
 <img width="2772" height="1476" alt="Ekran görüntüsü 2026-02-05 170637" src="https://github.com/user-attachments/assets/6548da13-a35f-4d57-ac58-c02da3c0969e" />
