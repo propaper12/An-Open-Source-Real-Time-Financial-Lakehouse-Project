@@ -73,7 +73,7 @@ python fake_company.py
 Sistemde yeterli veri biriktikten sonra modelleri eğitmek ve MLflow'a kaydetmek için:
 Bash
 ```
-docker exec spark-silver python train_model.py
+docker exec -it spark-silver rm -rf /app/checkpoints_silver_v6
 ```
 
 ### 4. dbt Dönüşümlerini Çalıştırma
