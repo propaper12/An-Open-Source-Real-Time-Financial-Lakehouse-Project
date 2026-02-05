@@ -5,3 +5,4 @@ mınıo3=https://docs.min.io/enterprise/aistor-object-store/installation/contain
 dbt=https://docs.getdbt.com/docs/introduction
 postgresql=https://www.postgresql.org/docs/
 pyspark=https://spark.apache.org/docs/latest/api/python/index.html
+binance websocket=https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams
