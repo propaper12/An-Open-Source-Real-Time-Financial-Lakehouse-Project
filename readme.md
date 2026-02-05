@@ -59,6 +59,7 @@ Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa 
 Docker konteynerlerini (Kafka, Spark, Airflow, Postgres, MinIO vb.) derler ve arka planda çalıştırır:
 Bash
 ```
+.env adında bır dosya olusturun ilk once ondan sonra asagıdakı kodu calıstırın
 docker-compose up -d --build
 ```
 ### 2. Şirket Veri Simülasyonunu Başlatma
