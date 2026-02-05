@@ -3,6 +3,7 @@
 # Enterprise Real-Time Lakehouse & MLOps Platform
 
 Bu platform; Binance WebSocket ve özel API kanallarından gelen canlı market verilerini işleyen, **Delta Lake** mimarisi üzerinde depolayan, **Spark MLlib** ile yapay zeka modelleri eğiten ve **dbt** ile profesyonel analitik katmanlar oluşturan uçtan uca bir veri mühendisliği iskeletidir.
+<img width="2816" height="1536" alt="Gemini_Generated_Image_ywap46ywap46ywap" src="https://github.com/user-attachments/assets/0d3cabf3-f35d-4d77-ad85-a01477a16265" />
 
 ----------
 
