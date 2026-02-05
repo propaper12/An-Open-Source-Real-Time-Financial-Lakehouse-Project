@@ -52,10 +52,10 @@ services:
         limits:
           memory: 1g
 
-  # 4. PRODUCER (BİNANCE DATA)
+  # 4. PRODUCER (BINANCE DATA)
   producer:
     build: .
-    container_name: binance_producer  # <-- GÜNCELLENDİ: Sabit isim verdik
+    container_name: binance_producer
     restart: always
     depends_on: [kafka]
     environment:
@@ -67,16 +67,15 @@ services:
         limits:
           memory: 512m
 
-  # 5. SPARK CONSUMER
+  # 5. SPARK CONSUMER (BRONZE LAYER)
   spark-consumer:
     build: .
     container_name: spark-consumer
-    restart: on-failure
+    restart: always  # <-- Değişti: Sistem sürekli ayakta kalsın
     depends_on: [kafka, minio]
     environment:
-      - SPARK_MASTER=local[*]
-      - SPARK_DRIVER_MEMORY=512m
-      - SPARK_EXECUTOR_MEMORY=512m
+      - SPARK_DRIVER_MEMORY=1g
+      - SPARK_EXECUTOR_MEMORY=1g
     volumes:
       - ./checkpoints:/app/checkpoints
     networks: [data-network]
@@ -85,11 +84,11 @@ services:
         limits:
           memory: 2g
 
-  # 6. SPARK SILVER
+  # 6. SPARK SILVER (PROCESSING LAYER)
   spark-silver:
     build: .
     container_name: spark-silver
-    restart: on-failure
+    restart: always # <-- Değişti: Sistem sürekli ayakta kalsın
     depends_on: [minio, spark-consumer]
     environment:
       - SPARK_MASTER=local[*]
@@ -106,7 +105,25 @@ services:
           memory: 3g
           cpus: '2.0'
 
-  # 7. DASHBOARD
+  # ---------------------------------------------------------
+  # 🆕 7. ML TRAINER (AIRFLOW YERİNE GELEN BEKÇİ)
+  # ---------------------------------------------------------
+  ml-trainer:
+    build: .
+    container_name: ml-trainer
+    restart: always
+    depends_on: [spark-silver]
+    # Airflow yerine senin yazdığın bekçi kodunu çalıştırır
+    command: python ml_watcher.py  
+    volumes:
+      - ./:/app
+      - ./models:/app/models
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow_server:5000
+      - MINIO_ENDPOINT=http://minio:9000
+    networks: [data-network]
+
+  # 8. DASHBOARD
   dashboard:
     build: .
     container_name: dashboard
@@ -117,13 +134,11 @@ services:
       - postgres
       - minio
       - spark-silver
-      - airflow        
-      - mlflow         # <--- DÜZELTİLEN KISIM (mlflow_server DEĞİL, mlflow OLACAK)
+      - mlflow         
     env_file:          
       - .env
     environment:
-      - AIRFLOW_INTERNAL_API=${AIRFLOW_INTERNAL_API}
-      - AIRFLOW_EXTERNAL_UI=${AIRFLOW_EXTERNAL_UI}
+      # Airflow değişkenlerini kaldırdık, gerek kalmadı
       - MLFLOW_INTERNAL_URI=${MLFLOW_INTERNAL_URI}
       - MLFLOW_EXTERNAL_UI=${MLFLOW_EXTERNAL_UI}
     networks:
@@ -135,7 +150,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./dashboard_app:/app/dashboard_app
-  # 8. POSTGRES
+      
+  # 9. POSTGRES
   postgres:
     image: postgres:15
     container_name: postgres
@@ -152,7 +168,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # 9. DBT
+  # 10. DBT
   dbt:
     build: ./dbt_project
     container_name: dbt_transformer
@@ -169,7 +185,7 @@ services:
         limits:
           memory: 512m
 
-  # 10. API GATEWAY
+  # 11. API GATEWAY
   api-gateway:
     build: .
     container_name: api_gateway
@@ -185,7 +201,7 @@ services:
         limits:
           memory: 256m
 
-  # 11. CADVISOR
+  # 12. CADVISOR
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
@@ -200,7 +216,7 @@ services:
     networks:
       - data-network
 
-  # 12. PROMETHEUS
+  # 13. PROMETHEUS
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -215,7 +231,7 @@ services:
     networks:
       - data-network
 
-  # 13. GRAFANA
+  # 14. GRAFANA
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -231,7 +247,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
   
-  # 14. MLFLOW SERVER
+  # 15. MLFLOW SERVER
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.7.1
     container_name: mlflow_server
@@ -251,6 +267,7 @@ services:
     depends_on:
       - minio
 
+  # 16. METABASE
   metabase:
     image: metabase/metabase:latest
     container_name: metabase
@@ -260,37 +277,22 @@ services:
       - data-network
     restart: always
 
-  # 15. AIRFLOW
-  airflow:
-    build: 
-      context: .
-      dockerfile: Dockerfile.airflow
-    container_name: airflow
-    user: "${AIRFLOW_UID:-50000}:0"
+  # 17. KAFDROP (Kafka UI)
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    restart: always
     ports:
-      - "8081:8080"
+      - "9010:9000"
     environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://admin:admin@postgres/market_db
-      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
-      - AIRFLOW__CORE__LOAD_EXAMPLES=false
-      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - /var/run/docker.sock:/var/run/docker.sock
+      KAFKA_BROKERCONNECT: "kafka:9092"
+      JVM_OPTS: "-Xms32M -Xmx64M"
+      SERVER_SERVLET_CONTEXT_PATH: "/"
     depends_on:
-      - postgres
-    command: >
-      bash -c "
-      echo 'Veritabaninin hazir olmasi bekleniyor...' &&
-      sleep 20 &&
-      airflow db migrate &&
-      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin || true &&
-      (airflow webserver & airflow scheduler)
-      "
+      - kafka
     networks:
       - data-network
+
 
 networks:
   data-network:

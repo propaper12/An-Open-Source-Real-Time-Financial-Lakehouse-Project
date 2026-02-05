@@ -113,10 +113,8 @@ try:
         
         input_cols = ["volatility", "lag_1", "lag_3", "ma_5", "ma_10", "momentum", "volatility_change"]
         
-        assembler = VectorAssembler(inputCols=input_cols, outputCol="features_raw")
-        scaler = StandardScaler(inputCol="features_raw", outputCol="features", withStd=True, withMean=False)
-        
-        pipeline_prep = Pipeline(stages=[assembler, scaler])
+        assembler = VectorAssembler(inputCols=input_cols, outputCol="features") 
+        pipeline_prep = Pipeline(stages=[assembler]) # Sadece assembler var
         model_prep = pipeline_prep.fit(feature_df)
         final_data = model_prep.transform(feature_df).select("features", col("average_price").alias("label"), "processed_time")
 

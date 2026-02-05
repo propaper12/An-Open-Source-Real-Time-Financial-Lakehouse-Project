@@ -2,58 +2,79 @@ import json
 import time
 import os
 import websocket
+import logging
 from kafka import KafkaProducer
 from datetime import datetime
 
-KAFKA_SERVER = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:29092')
+# --- LOG AYARLARI ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+KAFKA_SERVER = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092')
 KAFKA_TOPIC = 'market_data'
 
-print(f"Producer Başlatılıyor... Hedef: {KAFKA_SERVER}")
+# --- KAFKA PRODUCER (Gelişmiş Ayarlar) ---
+def get_kafka_producer():
+    while True:
+        try:
+            producer = KafkaProducer(
+                bootstrap_servers=KAFKA_SERVER,
+                value_serializer=lambda x: json.dumps(x).encode('utf-8'),
+                # Performans Ayarları
+                acks=1, # 1 onay yeterli (hız için)
+                retries=5, # Başarısız olursa 5 kez dene
+                compression_type='gzip' # Band genişliği tasarrufu
+            )
+            logger.info("✅ Kafka bağlantısı başarıyla kuruldu.")
+            return producer
+        except Exception as e:
+            logger.error(f"❌ Kafka'ya bağlanılamadı, 5 saniye sonra tekrar denenecek: {e}")
+            time.sleep(5)
 
-producer = None
-while producer is None:
-    try:
-        producer = KafkaProducer(
-            bootstrap_servers=KAFKA_SERVER,
-            value_serializer=lambda x: json.dumps(x).encode('utf-8')
-        )
-        print("Kafka Bağlantısı Başarılı!")
-    except Exception as e:
-        print(f"Kafka'ya bağlanılamadı, 5 saniye sonra tekrar denenecek... Hata: {e}")
-        time.sleep(5)
+producer = get_kafka_producer()
 
 def on_message(ws, message):
     try:
         data = json.loads(message)
+        
+        # Veriyi profesyonel bir formata sokuyoruz
         processed_data = {
-            'symbol': 'BTCUSDT',
+            'symbol': data['s'],      # Binance'den gelen sembol (örn: BTCUSDT)
             'price': float(data['p']),
             'quantity': float(data['q']),
-            'timestamp': datetime.fromtimestamp(data['T'] / 1000).isoformat()
+            'timestamp': datetime.fromtimestamp(data['T'] / 1000).isoformat(),
+            'event_time': datetime.utcnow().isoformat(), # Verinin sisteme giriş saati
+            'source': 'binance_ws'
         }
+        
+        # Kafka'ya fırlat
         producer.send(KAFKA_TOPIC, value=processed_data)
+        # logger.info(f"🚀 Veri Gönderildi: {processed_data['symbol']} -> {processed_data['price']}")
+
     except Exception as e:
-        print(f"Veri işleme hatası: {e}")
+        logger.error(f"⚠️ Veri işleme hatası: {e}")
 
 def on_error(ws, error):
-    print(f"WebSocket Hatası: {error}")
+    logger.error(f"🌐 WebSocket Hatası: {error}")
 
 def on_close(ws, close_status_code, close_msg):
-    print("Bağlantı Kapandı. Yeniden bağlanılıyor...")
+    logger.warning("🔌 Bağlantı Kapandı. Yeniden bağlanılıyor...")
+    time.sleep(2) # Hemen bağlanıp spam yapmasın
 
 def on_open(ws):
-    print("Binance WebSocket Bağlandı - Veri Akışı Başladı ")
+    logger.info("✅ Binance WebSocket Bağlantısı Açıldı - Akış Başlıyor...")
 
 if __name__ == "__main__":
+    # Sadece BTCUSDT
+    socket_url = "wss://stream.binance.com:9443/ws/btcusdt@trade"
+
     while True:
-        try:
-            socket_url = "wss://stream.binance.com:9443/ws/btcusdt@trade"
-            ws = websocket.WebSocketApp(socket_url,
-                                        on_open=on_open,
-                                        on_message=on_message,
-                                        on_error=on_error,
-                                        on_close=on_close)
-            ws.run_forever()
-        except Exception as e:
-            print(f"Ana döngü hatası: {e}")
-            time.sleep(5)
+        ws = websocket.WebSocketApp(
+            socket_url,
+            on_open=on_open,
+            on_message=on_message,
+            on_error=on_error,
+            on_close=on_close
+        )
+        # ping_interval ve ping_timeout ile bağlantının canlı kalmasını sağlıyoruz
+        ws.run_forever(ping_interval=70, ping_timeout=10)
