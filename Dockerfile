@@ -39,9 +39,7 @@ RUN pip install --no-cache-dir \
     psutil \
     schedule
 
-# ---------------------------------------------------------------
 # 3. JAR DOSYALARI (Garanti Klasör: /opt/spark-jars)
-# ---------------------------------------------------------------
 RUN mkdir -p /opt/spark-jars
 WORKDIR /opt/spark-jars
 
@@ -55,10 +53,10 @@ RUN wget https://jdbc.postgresql.org/download/postgresql-42.6.0.jar && \
     wget https://repo1.maven.org/maven2/io/delta/delta-core_2.12/2.4.0/delta-core_2.12-2.4.0.jar && \
     wget https://repo1.maven.org/maven2/io/delta/delta-storage/2.4.0/delta-storage-2.4.0.jar
 
-# Çalışma dizinine geri dön
+# Çalışma dizini
 WORKDIR /app
 
-# Dosyaları Kopyala
+# Uygulama kaynak kodlarını container image içine kopyalar.
 COPY consumer_lake.py .
 COPY process_silver.py .
 COPY train_model.py .
