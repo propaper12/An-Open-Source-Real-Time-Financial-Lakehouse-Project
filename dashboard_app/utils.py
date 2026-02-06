@@ -4,7 +4,7 @@ import psycopg2
 import pandas as pd
 import os
 
-# --- KONFİGÜRASYON (Environment Variables ile daha güvenli) ---
+#KONFİGÜRASYON (Environment Variables ile daha güvenli) 
 MINIO_URL = os.getenv("MINIO_URL", "http://minio:9000")
 ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin")
 SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "admin12345")
@@ -80,4 +80,5 @@ def load_latest_silver_data(limit=10):
             
     except Exception as e:
         st.warning(f"Veri okuma hatası (Henüz veri oluşmamış olabilir): {e}")
+
         return pd.DataFrame()
