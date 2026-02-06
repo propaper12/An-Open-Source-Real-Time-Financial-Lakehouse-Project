@@ -47,15 +47,15 @@ Bu platform; Binance WebSocket ve özel API kanallarından gelen canlı market v
 └── .gitignore
 ```
 
-## 🏗️ Mimari Tasarım (Architecture)
+##  Mimari Tasarım (Architecture)
 
 Sistem, verinin ham halden alınarak anlamlı iş zekası raporlarına dönüşmesine kadar 5 ana katmandan oluşur:
 
 Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa edilmiştir. Aşağıda, sistemin omurgasını oluşturan dosyaların detaylı açıklamalarını bulabilirsiniz:
 
-#### 📥 Veri Girişi ve API (Ingestion)
+####  Veri Girişi ve API (Ingestion)
 
--   🚀 **`producer.py` (Real-Time Ingestion Engine):** Binance WebSocket API'sine milisaniye hassasiyetinde bağlanarak canlı piyasa verilerini yakalayan ana veri sürücüsüdür.
+-     **`producer.py` (Real-Time Ingestion Engine):** Binance WebSocket API'sine milisaniye hassasiyetinde bağlanarak canlı piyasa verilerini yakalayan ana veri sürücüsüdür.
     
     -   **Asenkron Mesajlaşma:** Yakalanan trade verilerini Apache Kafka'nın `market_data` topic'ine asenkron olarak iletir.
         
@@ -69,8 +69,8 @@ Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa 
         
     -   **Dayanıklılık (Resilience):** WebSocket bağlantısının canlı kalması için `ping_interval` kontrolü ve Kafka broker hazır olana kadar devrede kalan `time.sleep(5)` tabanlı dinamik yeniden bağlanma (reconnection) mekanizmasına sahiptir.
     
-### ⚡`ingestion_api.py`
-> **Önemli Not:** Bu modül, sistemin ana veri akışından bağımsız olarak tasarlanmış bir **"opsiyonel genişletme katmanı"**dır. Temel amacı, Binance dışındaki özel şirketlerin veya harici veri kaynaklarının kendi verilerini sisteme dahil edebilmesi için standart bir giriş kapısı sunmaktır.
+### `ingestion_api.py`
+> **Önemli Not:** Bu modül sistemin ana veri akışından bağımsız olarak tasarlanmış bir **"opsiyonel genişletme katmanı"**dır. Temel amacı Binance dışındaki özel şirketlerin veya harici veri kaynaklarının kendi verilerini sisteme dahil edebilmesi için standart bir giriş kapısı sunmaktır.
 
 -   **`ingestion_api.py` (Universal API Gateway):** FastAPI tabanlı asenkron bir uç nokta (endpoint) sunarak, dış kaynaklardan gelen özel finansal verileri Kafka ekosistemine dahil eden köprü modülüdür.
     
@@ -86,12 +86,12 @@ Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa 
         
     -   **Hata Yönetimi (Exception Handling):** Kafka bağlantı kopmaları veya geçersiz veri formatları durumunda standart HTTP 500/400 hata kodları ile istemciyi bilgilendirerek güvenli bir veri iletimi sağlar.
     
--   🏢 **`fake_company.py`**: Sistemi test etmek için geliştirilmiş bir simülatördür. Kendi şirket verileriniz varmış gibi FastAPI üzerinden sisteme veri gönderir.
+-    **`fake_company.py`**: Sistemi test etmek için geliştirilmiş bir simülatördür. Kendi şirket verileriniz varmış gibi FastAPI üzerinden sisteme veri gönderir.
     
 
-#### ⚙️ Veri İşleme ve Storage (Processing & Lakehouse)
+####  Veri İşleme ve Storage (Processing & Lakehouse)
 
-🌊 **`process_silver.py` (The Heart of Analytics):** Apache Spark Structured Streaming mimarisini kullanarak Kafka'dan gelen ham verileri "Silver" katmanına dönüştüren ve **"in-flight"** (akış anında) AI çıkarımı yapan modüldür.
+ **`process_silver.py` (The Heart of Analytics):** Apache Spark Structured Streaming mimarisini kullanarak Kafka'dan gelen ham verileri "Silver" katmanına dönüştüren ve **"in-flight"** (akış anında) AI çıkarımı yapan modüldür.
 
 -   **Hibrit Model Yükleme (Model Persistence):** `get_model_for_symbol` fonksiyonu ile MinIO (S3) üzerindeki en güncel regresyon modellerini (RandomForest, Linear, GBT, DecisionTree) dinamik olarak yükler ve bellek yönetimi için `model_cache` mekanizmasını kullanır.
     
@@ -117,7 +117,7 @@ Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa 
 ----------
 
 
--   **🥉`consumer_lake.py` (The Data Archivist):** Apache Kafka'daki ham verileri (Raw Data) yakalayan ve ACID garantisi sunan **Delta Lake Bronze** katmanına kalıcı olarak kaydeden modüldür.
+-   **`consumer_lake.py` (The Data Archivist):** Apache Kafka'daki ham verileri (Raw Data) yakalayan ve ACID garantisi sunan **Delta Lake Bronze** katmanına kalıcı olarak kaydeden modüldür.
     
     -   **Spark-Delta Entegrasyonu:** Spark Session üzerinden Delta Lake uzantılarını (`DeltaSparkSessionExtension`) aktif ederek, nesne depolama katmanı (MinIO) üzerinde tam veri tutarlılığı sağlar.
         
@@ -139,10 +139,10 @@ Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa 
             
     -   **Mikro-Yığın Zamanlaması:** `trigger(processingTime='10 seconds')` ile verileri 10 saniyelik aralıklarla MinIO (S3a) üzerine `append` moduyla kalıcı olarak işler.
     
--   🏗️ **`dbt_project/`**: Verinin Silver'dan Gold katmanına (Analitik katman) dönüşümü için gerekli SQL modellerini içerir. Veri temizleme ve aggregation işlemleri burada döner.
+-    **`dbt_project/`**: Verinin Silver'dan Gold katmanına (Analitik katman) dönüşümü için gerekli SQL modellerini içerir. Veri temizleme ve aggregation işlemleri burada döner.
     
 
-#### 🧠 MLOps ve Otomasyon (Orchestration)
+#### MLOps ve Otomasyon (Orchestration)
 
 
 **`train_model.py` (The Intelligent Backbone):** Spark MLlib ve MLflow entegrasyonu ile çalışan, Silver katmanındaki verileri kullanarak en optimize tahmin modellerini otonom olarak üreten bir model geliştirme fabrikasıdır.
