@@ -6,26 +6,24 @@ import plotly.express as px
 import os
 from datetime import datetime
 
-# --- AYARLAR ---
-st.set_page_config(page_title="MLOps Studio", layout="wide", page_icon="🧠")
+#AYARLAR
+st.set_page_config(page_title="MLOps Studio", layout="wide")
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_INTERNAL_URI", "http://mlflow:5000")
 MLFLOW_EXTERNAL_UI = "http://localhost:5000"
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
-# --- YARDIMCI FONKSİYONLAR ---
+#YARDIMCI FONKSİYONLAR 
 def extract_algo_name(row):
     """
     Run isimlerinden temiz Algoritma adı çıkarır.
     """
-    # 1. Etiketlerden Kontrol
     if pd.notna(row.get('tags.winner_algo')):
         return row['tags.winner_algo'].replace('_', ' ')
     if pd.notna(row.get('params.winner_algo')):
         return row['params.winner_algo'].replace('_', ' ')
         
-    # 2. İsimden Çıkarma (DÜZELTİLDİ)
     run_name = row.get('tags.mlflow.runName', str(row.name))
     if isinstance(run_name, str):
         if "RandomForest" in run_name: return "Random Forest"
@@ -33,7 +31,7 @@ def extract_algo_name(row):
         if "Linear" in run_name: return "Linear Regression"
         if "DecisionTree" in run_name: return "Decision Tree"
         if "Gradient" in run_name or "GBT" in run_name: return "Gradient Boosted"
-        if "CHAMPION" in run_name: return "🏆 CHAMPION MODEL"
+        if "CHAMPION" in run_name: return " CHAMPION MODEL"
     
     return "Unknown Model"
 
@@ -53,8 +51,8 @@ def get_mlflow_data():
         st.error(f"MLflow Bağlantı Hatası: {e}")
         return pd.DataFrame()
 
-# --- ARAYÜZ ---
-st.title("🧠 Enterprise AutoML & Model Performance Analytics")
+# ARAYÜZ
+st.title(" Enterprise AutoML & Model Performance Analytics")
 st.markdown("Bu panel, sistemdeki yapay zeka modellerinin **performans metriklerini, kararlılığını ve şampiyon seçimlerini** analiz eder.")
 
 st.divider()
@@ -62,7 +60,7 @@ st.divider()
 df_runs = get_mlflow_data()
 
 if not df_runs.empty:
-    # --- VERİ TEMİZLİĞİ ---
+    # VERİ TEMİZLİĞİ
     df_runs['Algorithm'] = df_runs.apply(extract_algo_name, axis=1)
     
     if 'metrics.rmse' in df_runs.columns:
@@ -75,7 +73,7 @@ if not df_runs.empty:
         df_runs['metrics.r2'] = 0.0
         df_runs['safe_size'] = 0.1
 
-    # --- 1. KPI KARTLARI ---
+    # KPI KARTLARI
     if 'metrics.rmse' in df_runs.columns:
         valid_runs = df_runs[df_runs['metrics.rmse'] > 0]
         if not valid_runs.empty:
@@ -83,21 +81,21 @@ if not df_runs.empty:
             
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("🏆 Şampiyon Model", best_run['Algorithm'], "Canlıda Aktif")
+                st.metric(" Şampiyon Model", best_run['Algorithm'], "Canlıda Aktif")
             with col2:
-                st.metric("📉 En Düşük Hata (RMSE)", f"{best_run['metrics.rmse']:.2f} $", delta_color="inverse")
+                st.metric(" En Düşük Hata (RMSE)", f"{best_run['metrics.rmse']:.2f} $", delta_color="inverse")
             with col3:
-                st.metric("📈 En Yüksek Başarı (R2)", f"{best_run['metrics.r2']:.4f}")
+                st.metric(" En Yüksek Başarı (R2)", f"{best_run['metrics.r2']:.4f}")
             with col4:
-                st.metric("📊 Toplam Model Eğitimi", len(df_runs))
+                st.metric(" Toplam Model Eğitimi", len(df_runs))
 
     st.divider()
 
-    # --- 2. GRAFİK ALANI ---
+    # GRAFİK ALANI
     c1, c2 = st.columns(2)
     
     with c1:
-        st.subheader("📦 Algoritma Kararlılık Analizi")
+        st.subheader(" Algoritma Kararlılık Analizi")
         fig_box = px.box(
             df_runs, 
             x="Algorithm", 
@@ -111,7 +109,7 @@ if not df_runs.empty:
         st.plotly_chart(fig_box, use_container_width=True)
 
     with c2:
-        st.subheader("🎯 Başarı vs Hata Analizi")
+        st.subheader(" Başarı vs Hata Analizi")
         fig_scatter = px.scatter(
             df_runs,
             x="metrics.rmse",
@@ -139,9 +137,9 @@ if not df_runs.empty:
     )
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # --- 3. TABLO ---
+    #TABLO
     st.divider()
-    st.subheader("📝 Detaylı Eğitim Kayıtları")
+    st.subheader(" Detaylı Eğitim Kayıtları")
     
     cols = ['start_time', 'Algorithm', 'metrics.rmse', 'metrics.r2', 'run_id']
     cols = [c for c in cols if c in df_runs.columns]
@@ -152,11 +150,12 @@ if not df_runs.empty:
     st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 else:
-    st.warning("⚠️ Henüz analiz edilecek eğitim verisi bulunamadı.")
+    st.warning(" Henüz analiz edilecek eğitim verisi bulunamadı.")
     st.info("Sistem veri topladıkça burası otomatik dolacaktır.")
 
-# --- SIDEBAR ---
+#SIDEBAR
 with st.sidebar:
-    st.header("⚙️ Kontrol Paneli")
-    if st.button("🔄 Analizi Yenile", type="primary"):
+    st.header(" Kontrol Paneli")
+    if st.button(" Analizi Yenile", type="primary"):
+
         st.rerun()
