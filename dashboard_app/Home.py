@@ -1,25 +1,22 @@
 import streamlit as st
 import socket
 
-# --- SAYFA AYARLARI ---
+# SAYFA AYARLARI 
 st.set_page_config(
     page_title="Financial Lakehouse HQ", 
     layout="wide",
-    page_icon="🏠"
 )
 
-# --- BAŞLIK ---
-st.title("🏠 Financial Lakehouse HQ")
+#BAŞLIK
+st.title(" Financial Lakehouse ")
 st.markdown("""
 **Komuta Merkezine Hoşgeldiniz.** Bu platform, **End-to-End (Uçtan Uca)** veri mühendisliği pipeline'larını yönetir, izler ve raporlar.
 """)
 
 st.divider()
 
-# ==========================================
 # BÖLÜM 1: SİSTEM MİMARİSİ (VİTRİN)
-# ==========================================
-st.subheader("🗺️ Proje Mimarisi ve Veri Akışı")
+st.subheader(" Proje Mimarisi ve Veri Akışı")
 st.markdown("Verinin **Binance** kaynağından çıkıp **Son Kullanıcı** ekranına gelene kadar izlediği yol.")
 
 architecture_code = """
@@ -61,53 +58,51 @@ except:
 
 st.divider()
 
-# ==========================================
 # BÖLÜM 2: SERVİS ERİŞİM NOKTALARI
-# ==========================================
-st.subheader("🚀 Servis Erişim Noktaları & Araçlar")
+st.subheader(" Servis Erişim Noktaları & Araçlar")
 st.markdown("Sistemi oluşturan mikroservislerin yönetim panellerine buradan erişebilirsiniz.")
 
-# Servis Listesi (Airflow hariç hepsi)
+# Servis Listesi
 services = [
     {
-        "icon": "🧠", "name": "MLflow Tracking", 
+        "icon": "", "name": "MLflow Tracking", 
         "url": "http://localhost:5000", 
         "user": "-", "pass": "-", 
         "desc": "Model deneylerini, metrikleri ve parametreleri takip edin."
     },
     {
-        "icon": "🗄️", "name": "MinIO Console", 
+        "icon": "", "name": "MinIO Console", 
         "url": "http://localhost:9001", 
         "user": "admin", "pass": "admin12345", 
         "desc": "Object Storage (S3) dosya gezgini ve bucket yönetimi."
     },
     {
-        "icon": "📈", "name": "Metabase BI", 
+        "icon": "", "name": "Metabase BI", 
         "url": "http://localhost:3005", 
         "user": "Setup", "pass": "-", 
         "desc": "SQL tabanlı iş zekası raporlama ve dashboard aracı."
     },
     {
-        "icon": "📊", "name": "Grafana Monitor", 
+        "icon": "", "name": "Grafana Monitor", 
         "url": "http://localhost:3001", 
         "user": "admin", "pass": "admin", 
         "desc": "Sistem kaynakları (CPU/RAM) ve log görselleştirme."
     },
     {
-        "icon": "🔌", "name": "FastAPI Docs", 
+        "icon": "", "name": "FastAPI Docs", 
         "url": "http://localhost:8000/docs", 
         "user": "-", "pass": "-", 
         "desc": "Backend API uç noktaları (Swagger UI)."
     },
     {
-        "icon": "🐋", "name": "CAdvisor", 
+        "icon": "", "name": "CAdvisor", 
         "url": "http://localhost:8090/containers/", 
         "user": "-", "pass": "-", 
         "desc": "Docker konteynerlerinin anlık performans metrikleri."
     }
 ]
 
-# Grid Düzeni (2 Kolonlu)
+# Grid Düzeni 
 c1, c2 = st.columns(2)
 grid_cols = [c1, c2]
 
@@ -128,7 +123,7 @@ for i, service in enumerate(services):
             
             # Orta Kısım: Şifreler ve Detaylar
             if service['name'] == "Metabase BI":
-                with st.expander("📝 Kurulum Bilgileri (Tıkla)"):
+                with st.expander(" Kurulum Bilgileri (Tıkla)"):
                     st.info("""
                     **Database Type:** PostgreSQL
                     **Host:** postgres
@@ -147,11 +142,12 @@ for i, service in enumerate(services):
                     st.text("Şifre:")
                     st.code(service['pass'], language="text")
             else:
-                st.success("🔓 Kimlik doğrulama gerekmez (Açık Erişim)")
+                st.success(" Kimlik doğrulama gerekmez (Açık Erişim)")
 
             # Alt Kısım: Buton
             st.markdown("")
-            st.link_button(f"↗️ {service['name']} Paneline Git", service['url'], use_container_width=True)
+            st.link_button(f" {service['name']} Paneline Git", service['url'], use_container_width=True)
 
 st.markdown("---")
-st.caption("© 2026 Real-Time Financial Lakehouse | v4.0 Stable")
+
+st.caption("2026 Real-Time Financial Lakehouse Madeby Ömer Çakan")
