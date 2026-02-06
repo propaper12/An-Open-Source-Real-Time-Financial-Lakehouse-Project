@@ -89,24 +89,24 @@ try:
     target_symbols = []
     
     if target_arg != "ALL" and target_arg != "None":
-        print(f"🎯 Hedef Odaklı Eğitim Modu: Sadece {target_arg} için çalışılacak.")
+        print(f" Hedef Odaklı Eğitim Modu: Sadece {target_arg} için çalışılacak.")
         count = base_df.filter(col("symbol") == target_arg).count()
         if count > 10:
             target_symbols = [target_arg]
         else:
             print(f" Uyarı: {target_arg} için yeterli veri yok ({count} satır).")
     else:
-        print(" Genel Tarama Modu: Yeterli verisi olan tüm semboller taranıyor.")
+        print("Yeterli verisi olan tüm symboller taranıyor.")
         symbol_counts = base_df.groupBy("symbol").count().filter("count > 20").collect()
         target_symbols = [row.symbol for row in symbol_counts]
 
     if not target_symbols:
-        print(" İşlenecek uygun sembol bulunamadı. Veri akışını bekleyin.")
+        print(" İşlenecek uygun symbol bulunamadı. Veri akışını bekleyin.")
         spark.stop()
         sys.exit(0)
 
     for symbol in target_symbols:
-        print(f"\n⚡ ANALİZ BAŞLIYOR: {symbol}")
+        print(f"\n ANALİZ BAŞLIYOR: {symbol}")
         
         raw_df = base_df.filter(col("symbol") == symbol)
         feature_df = create_smart_features(raw_df)
@@ -185,7 +185,7 @@ try:
                 mlflow.log_param("winner_algo", best_model_name)
                 mlflow.spark.log_model(best_model, "model")
             
-            print(f"   💾 Model Production ortamına taşındı: {save_path}")
+            print(f"Model Production ortamına taşındı: {save_path}")
 
         train_data.unpersist()
         test_data.unpersist()
