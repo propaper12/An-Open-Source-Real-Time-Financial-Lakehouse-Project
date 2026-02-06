@@ -10,7 +10,7 @@ Bu platform; Binance WebSocket ve özel API kanallarından gelen canlı market v
 
 ```text
 .
-├── dags/                       # Airflow İş Akışları (DAGs)
+├── dags/                       # Airflow İş Akışları (DAGs)(Artık projeden kaldrıldı ama denemek ısteyenelr için silinmedi duruyor ama bir islevi yok artık)
 │   ├── dbt_dag.py
 │   ├── mlops_pipeline.py
 │   ├── otomatik_egitim.py
@@ -27,9 +27,9 @@ Bu platform; Binance WebSocket ve özel API kanallarından gelen canlı market v
 │   ├── profiles.yml
 │   ├── Dockerfile
 │   └── models/                 # SQL Modelleri (Staging & Marts)
-│
+│  └───target/  
 ├── Dokumanlar/                 # Proje Dokümantasyonu
-│
+├──25.3                         #kullancının projemle alakalı herseye ualsacagı genel yazılarım
 ├── batch_processor.py          # Toplu veri işleme servisi
 ├── batch_user_processor.py     # Kullanıcı verisi işleme
 ├── consumer_lake.py            # Data Lake tüketici servisi
@@ -50,9 +50,6 @@ Bu platform; Binance WebSocket ve özel API kanallarından gelen canlı market v
 ## 🏗️ Mimari Tasarım (Architecture)
 
 Sistem, verinin ham halden alınarak anlamlı iş zekası raporlarına dönüşmesine kadar 5 ana katmandan oluşur:
-
-
-
 
 Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa edilmiştir. Aşağıda, sistemin omurgasını oluşturan dosyaların detaylı açıklamalarını bulabilirsiniz:
 
