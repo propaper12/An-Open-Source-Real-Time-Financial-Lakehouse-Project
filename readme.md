@@ -6,6 +6,46 @@ Bu platform; Binance WebSocket ve özel API kanallarından gelen canlı market v
 <img width="2816" height="1536" alt="Gemini_Generated_Image_ywap46ywap46ywap" src="https://github.com/user-attachments/assets/0d3cabf3-f35d-4d77-ad85-a01477a16265" />
 
 ----------
+## 📂 Proje Yapısı
+
+```text
+.
+├── dags/                       # Airflow İş Akışları (DAGs)
+│   ├── dbt_dag.py
+│   ├── mlops_pipeline.py
+│   ├── otomatik_egitim.py
+│   └── spark_ml_pipeline.py
+│
+├── dashboard_app/              # Streamlit Kullanıcı Arayüzü
+│   ├── Home.py                 # Ana Sayfa
+│   ├── utils.py
+│   ├── admin_modules/          # Yönetim ve Backend İşlemleri
+│   └── pages/                  # Uygulama Sayfaları (Canlı Piyasa, MLOps vb.)
+│
+├── dbt_project/                # Veri Dönüşüm Katmanı (DBT)
+│   ├── dbt_project.yml
+│   ├── profiles.yml
+│   ├── Dockerfile
+│   └── models/                 # SQL Modelleri (Staging & Marts)
+│
+├── Dokumanlar/                 # Proje Dokümantasyonu
+│
+├── batch_processor.py          # Toplu veri işleme servisi
+├── batch_user_processor.py     # Kullanıcı verisi işleme
+├── consumer_lake.py            # Data Lake tüketici servisi
+├── docker-compose.yaml         # Tüm servislerin kurulumu
+├── Dockerfile                  # Ana uygulama konteyner tanımı
+├── Dockerfile.superset         # Superset özelleştirmeleri
+├── fake_company.py             # Mock veri üretici (Simülasyon)
+├── ingestion_api.py            # Veri alım API'si
+├── ml_watcher.py               # Model performans izleyici
+├── process_silver.py           # Silver katman işleme
+├── producer.py                 # Kafka veri üreticisi
+├── prometheus.yml              # Metrik izleme konfigürasyonu
+├── train_model.py              # Model eğitim scripti
+├── universal_producer.py       # Genel amaçlı veri üretici
+└── .gitignore
+```
 
 ## 🏗️ Mimari Tasarım (Architecture)
 
