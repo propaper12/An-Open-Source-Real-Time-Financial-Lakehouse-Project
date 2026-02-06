@@ -8,9 +8,9 @@ from pyspark.ml.feature import VectorAssembler, StandardScalerModel
 from functools import reduce
 from pyspark.sql import DataFrame
 
-# --- LOGLARDA GÖRÜNMESİ İÇİN ---
+# LOGLARDA GÖRÜNMESİ İÇİN 
 print("\n" + "="*50)
-print("🚀 V5.0 GÜNCELLEME: VECTOR FIX (7-DIMENSION) AKTİF")
+print(" V5.0 GÜNCELLEME: VECTOR FIX (7-DIMENSION) AKTİF")
 print("="*50 + "\n")
 
 time.sleep(5)
@@ -21,7 +21,7 @@ ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin")
 SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "admin12345")
 BASE_MODEL_PATH = "s3a://market-data/models/"
 
-# JAR Ayarları (Aynı kalıyor)
+# JAR Ayarları
 jar_dir = "/opt/spark-jars"
 jar_list = [
     f"{jar_dir}/delta-core_2.12-2.4.0.jar",
@@ -71,7 +71,7 @@ def get_model_for_symbol(symbol):
     for loader in loaders:
         try:
             model = loader.load(path)
-            print(f"✅ Model Yüklendi: {symbol} -> {loader.__name__}")
+            print(f" Model Yüklendi: {symbol} -> {loader.__name__}")
             model_cache[symbol] = model
             return model
         except:
@@ -81,7 +81,7 @@ def get_model_for_symbol(symbol):
 schema = StructType().add("symbol", StringType()).add("price", DoubleType()).add("quantity", DoubleType()).add("timestamp", StringType()).add("source", StringType()) \
     .add("data", StructType().add("s", StringType()).add("p", StringType()).add("q", StringType()))
 
-print("📡 Kafka Bağlanıyor...")
+print(" Kafka Bağlanıyor...")
 df = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
@@ -122,7 +122,7 @@ def process_batch_with_ai(batch_df, batch_id):
             sym_df = batch_df.filter(col("symbol") == sym)
             model = get_model_for_symbol(sym)
             
-            # --- KRİTİK BÖLÜM: Feature Vector Hazırlığı ---
+            #  Feature Vector Hazırlığı
             # Model 7 özellik bekliyor: ["volatility", "lag_1", "lag_3", "ma_5", "ma_10", "momentum", "volatility_change"]
             # Streaming'de 'lag' olmadığı için mevcut fiyatı baz alarak dolduruyoruz.
             
@@ -143,8 +143,8 @@ def process_batch_with_ai(batch_df, batch_id):
             try:
                 vec_df = assembler.transform(prep_df)
                 
-                # Model 'features' adında bir kolon bekler.
-                # Eğer modelin içinde Scaler yoksa, raw features'ı direkt features yapıyoruz.
+                # Model features adında bir kolon bekler.
+                # Eğer modelin içinde Scaler yoksa, raw featuresı direkt features yapıyoruz.
                 final_input_df = vec_df.withColumnRenamed("features_raw", "features")
                 
                 if model:
@@ -157,7 +157,7 @@ def process_batch_with_ai(batch_df, batch_id):
                     res_df = sym_df.withColumn("predicted_price", col("average_price"))
                     
             except Exception as e:
-                print(f"⚠️ Tahmin Hatası ({sym}): {e}")
+                print(f" Tahmin Hatası ({sym}): {e}")
                 res_df = sym_df.withColumn("predicted_price", col("average_price"))
 
             final_dfs.append(res_df)
@@ -168,16 +168,16 @@ def process_batch_with_ai(batch_df, batch_id):
             # Delta Lake'e yaz
             full_result.write.format("delta").mode("append").partitionBy("symbol").save("s3a://market-data/silver_layer_delta")
             
-            # Postgres'e yaz (Dashboard için)
+            # Postgres'e yazıyoruz (Dashboard için)
             try:
                 pg_df = full_result.select("symbol", "volatility", "average_price", "processed_time", "predicted_price")
                 pg_df.write.jdbc(url=PG_URL, table="market_data", mode="append", properties=PG_PROPERTIES)
-                print(f"✅ Batch {batch_id} Başarıyla İşlendi.")
+                print(f" Batch {batch_id} Başarıyla İşlendi.")
             except Exception as e:
-                print(f"❌ DB Yazma Hatası: {e}")
+                print(f" DB Yazma Hatası: {e}")
 
     except Exception as e:
-        print(f"🚨 Batch İşleme Hatası: {e}")
+        print(f" Batch İşleme Hatası: {e}")
     finally:
         batch_df.unpersist()
 
