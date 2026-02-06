@@ -3,31 +3,29 @@ import sys
 import os
 import docker
 import pandas as pd
-import psutil  # Sistem kaynakları için
+import psutil 
 
-# --- MODÜL YOLU AYARLARI ---
+#MODÜL YOLU AYARLARI
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# --- MODÜLLERİ YÜKLE ---
+#MODÜLLERİ YÜKLE
 try:
     from admin_modules.minio_ops import render_minio_tab
     from admin_modules.db_ops import render_postgres_tab
     from admin_modules.metabase_ops import render_metabase_tab
 except ImportError as e:
-    st.error(f"⚠️ Kritik Modül Hatası: 'admin_modules' klasörü veya dosyaları eksik. Hata: {e}")
+    st.error(f"'admin_modules' klasörü veya dosyaları eksik. Hata: {e}")
     st.stop()
 
-# --- SAYFA AYARLARI ---
-st.set_page_config(page_title="Sistem Yönetimi", layout="wide", page_icon="🛠️")
+#SAYFA AYARLARI
+st.set_page_config(page_title="Sistem Yönetimi", layout="wide")
 
-st.title("🛠️ Enterprise Control Center")
+st.title(" Enterprise Control Center")
 st.markdown("Veri altyapısı, servis sağlığı ve kaynak tüketimi.")
 
 st.divider()
 
-# ==========================================
 # BÖLÜM 1: SUNUCU KAYNAK İZLEME (HOST METRICS)
-# ==========================================
 st.subheader("🖥️ Sunucu Kaynak Durumu (Host Metrics)")
 
 try:
@@ -60,16 +58,14 @@ except Exception as e:
 
 st.divider()
 
-# ==========================================
-# BÖLÜM 2: DOCKER SERVİS SAĞLIĞI (AKILLI MOD)
-# ==========================================
+# BÖLÜM 2: docker servis saglıgı
 st.subheader("📦 Konteyner Sağlığı ve Durum Analizi")
 
 try:
     client = docker.from_env()
     all_containers = client.containers.list(all=True) # Tüm konteynerleri bir kere çek
     
-    # Aranacak anahtar kelimeler (Tam isim olmak zorunda değil)
+    # Aranacak anahtar kelimeler 
     service_keywords = {
         "Binance Producer": "producer",
         "Apache Kafka": "kafka",
@@ -77,7 +73,7 @@ try:
         "Spark Streaming": "spark",
         "PostgreSQL DB": "postgres",
         "MinIO (S3)": "minio",
-        "MLflow Tracking": "mlflow", # Artık içinde 'mlflow' geçen her şeyi bulur
+        "MLflow Tracking": "mlflow",
         "AutoML Trainer": "trainer",
         "Streamlit Dashboard": "dashboard"
     }
@@ -91,11 +87,11 @@ try:
         if found_container:
             status = found_container.status
             if status == "running":
-                state_icon = "🟢 ÇALIŞIYOR"
+                state_icon = " ÇALIŞIYOR"
             elif status == "exited":
-                state_icon = "🔴 DURDU"
+                state_icon = " DURDU"
             else:
-                state_icon = f"🟡 {status.upper()}"
+                state_icon = f" {status.upper()}"
                 
             container_data.append({
                 "Servis Adı": display_name,
@@ -107,7 +103,7 @@ try:
             container_data.append({
                 "Servis Adı": display_name, 
                 "Gerçek Konteyner ID": "-",
-                "Durum": "⚠️ BULUNAMADI", 
+                "Durum": " BULUNAMADI", 
                 "ID": "-"
             })
 
@@ -128,12 +124,10 @@ except Exception as e:
 
 st.divider()
 
-# ==========================================
 # BÖLÜM 3: YÖNETİM SEKMELERİ
-# ==========================================
-tabs = st.tabs(["🪵 Canlı Log İzleyici", "💾 MinIO Yönetimi", "🐘 Veritabanı (Postgres)", "📊 Metabase (BI)"])
+tabs = st.tabs([" Canlı Log İzleyici", " MinIO Yönetimi", " Veritabanı (Postgres)", "Metabase (BI)"])
 
-# --- TAB 1: LOG İZLEYİCİ ---
+# LOG İZLEYİCİ 
 with tabs[0]:
     c1, c2 = st.columns([1, 4])
     
@@ -145,7 +139,7 @@ with tabs[0]:
             selected_container_name = st.selectbox("İncelenecek Servis:", running_names)
             lines = st.slider("Okunacak Satır Sayısı", 20, 1000, 100)
             
-            if st.button("🔄 Logları Güncelle", use_container_width=True):
+            if st.button(" Logları Güncelle", use_container_width=True):
                 st.rerun()
         else:
             st.warning("Hiçbir aktif konteyner bulunamadı.")
@@ -160,7 +154,7 @@ with tabs[0]:
             except Exception as e:
                 st.info(f"Log okunamadı: {e}")
 
-# --- TAB 2, 3, 4: DIŞ MODÜLLER ---
+#TAB 2, 3, 4: DIŞ MODÜLLER
 with tabs[1]:
     render_minio_tab()
 
@@ -169,5 +163,3 @@ with tabs[2]:
 
 with tabs[3]:
     render_metabase_tab()
-
-# ŞEMA KISMI TAMAMEN KALDIRILDI.
