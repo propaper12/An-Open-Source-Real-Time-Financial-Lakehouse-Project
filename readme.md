@@ -55,42 +55,146 @@ Proje, her biri belirli bir amaca hizmet eden modüler bir yapı üzerine inşa 
 
 #### 📥 Veri Girişi ve API (Ingestion)
 
--   🚀 **`producer.py`**: Binance WebSocket API'sine bağlanarak canlı piyasa verilerini (Trade) yakalar ve **Apache Kafka**'ya "raw-trades" topic'i üzerinden asenkron olarak basır.
+-   🚀 **`producer.py` (Real-Time Ingestion Engine):** Binance WebSocket API'sine milisaniye hassasiyetinde bağlanarak canlı piyasa verilerini yakalayan ana veri sürücüsüdür.
     
--   ⚡ **`ingestion_api.py`**: FastAPI tabanlı bir gateway'dir. Dış kurumsal kaynaklardan (örneğin Tesla) gelen verileri kabul eder ve Kafka'ya yönlendirir.
+    -   **Asenkron Mesajlaşma:** Yakalanan trade verilerini Apache Kafka'nın `market_data` topic'ine asenkron olarak iletir.
+        
+    -   **Gelişmiş Kafka Yapılandırması:** * **Hata Toleransı:** Bağlantı kopmalarına karşı `retries=5` yapılandırması ve `acks=1` (Leader Acknowledgement) ile hız-güvenlik dengesi optimize edilmiştir.
+        
+        -   **Performans:** Ağ bant genişliği tasarrufu için `gzip` sıkıştırma protokolü kullanılmıştır.
+            
+    -   **Veri Normalizasyonu ve Zenginleştirme:** Binance'den gelen ham JSON verilerini (`s`, `p`, `q`, `T`) sistemle uyumlu `symbol`, `price`, `quantity` ve `timestamp` alanlarına haritalar (mapping).
+        
+    -   **Sistem İzlenebilirliği:** Verinin Binance'den çıktığı an ile sisteme girdiği anı karşılaştırmak için `event_time` (ISO format) damgası ekleyerek gecikme (latency) analizine olanak tanır.
+        
+    -   **Dayanıklılık (Resilience):** WebSocket bağlantısının canlı kalması için `ping_interval` kontrolü ve Kafka broker hazır olana kadar devrede kalan `time.sleep(5)` tabanlı dinamik yeniden bağlanma (reconnection) mekanizmasına sahiptir.
+    
+### ⚡`ingestion_api.py`
+> **Önemli Not:** Bu modül, sistemin ana veri akışından bağımsız olarak tasarlanmış bir **"opsiyonel genişletme katmanı"**dır. Temel amacı, Binance dışındaki özel şirketlerin veya harici veri kaynaklarının kendi verilerini sisteme dahil edebilmesi için standart bir giriş kapısı sunmaktır.
+
+-   **`ingestion_api.py` (Universal API Gateway):** FastAPI tabanlı asenkron bir uç nokta (endpoint) sunarak, dış kaynaklardan gelen özel finansal verileri Kafka ekosistemine dahil eden köprü modülüdür.
+    
+    -   **Esnek Veri Kabulü:** Harici şirketlerin (`symbol`, `price`, `timestamp`) formatındaki verilerini `POST` isteği ile kabul eder ve otomatik olarak `market_data` akışına enjekte eder.
+        
+    -   **Veri Doğrulama ve Ön İşleme:**
+        
+        -   Gelen isteklerde zorunlu alan kontrolü yaparak hatalı veri girişini (Bad Request) uygulama seviyesinde engeller.
+            
+        -   Eksik `quantity` verisi içeren isteklere otomatik olarak varsayılan değerler atayarak veri hattının sürekliliğini korur.
+            
+    -   **Dinamik Kafka Entegrasyonu:** `get_kafka_producer` fonksiyonu ile Singleton tasarım desenine uygun şekilde tekil bir Kafka bağlantısı oluşturur ve gelen verileri kuyruğa (queue) asenkron olarak aktarır.
+        
+    -   **Hata Yönetimi (Exception Handling):** Kafka bağlantı kopmaları veya geçersiz veri formatları durumunda standart HTTP 500/400 hata kodları ile istemciyi bilgilendirerek güvenli bir veri iletimi sağlar.
     
 -   🏢 **`fake_company.py`**: Sistemi test etmek için geliştirilmiş bir simülatördür. Kendi şirket verileriniz varmış gibi FastAPI üzerinden sisteme veri gönderir.
     
 
 #### ⚙️ Veri İşleme ve Storage (Processing & Lakehouse)
 
--   🌊 **`process_silver.py`**: Sistemin ana motoru (Spark Streaming). Kafka'dan veriyi okur, şema doğrulaması yapar, **Spark ML** modellerini kullanarak "In-flight" tahminleme yapar ve sonuçları **Delta Lake Silver** katmanına yazar.
+🌊 **`process_silver.py` (The Heart of Analytics):** Apache Spark Structured Streaming mimarisini kullanarak Kafka'dan gelen ham verileri "Silver" katmanına dönüştüren ve **"in-flight"** (akış anında) AI çıkarımı yapan modüldür.
+
+-   **Hibrit Model Yükleme (Model Persistence):** `get_model_for_symbol` fonksiyonu ile MinIO (S3) üzerindeki en güncel regresyon modellerini (RandomForest, Linear, GBT, DecisionTree) dinamik olarak yükler ve bellek yönetimi için `model_cache` mekanizmasını kullanır.
     
--   🥉 **`consumer_lake.py`**: Kafka'dan gelen ham verileri hiçbir değişikliğe uğratmadan **Delta Lake Bronze** katmanına (Raw Data) yazar; veri geçmişinin korunmasını (Audit) sağlar.
+-   **Mikro-Yığın (Micro-batch) Stratejisi:** `.trigger(processingTime='5 seconds')` yapılandırmasıyla her 5 saniyede bir tetiklenen işlem döngüsü, düşük gecikmeli veri işleme ve veritabanı senkronizasyonu sağlar.
+    
+-   **Gelişmiş Veri Normalizasyonu:** Farklı kaynaklardan (Binance veya API Gateway) gelebilecek heterojen JSON verilerini `coalesce` fonksiyonu ile standartlaştırarak şema bütünlüğünü (Schema Enforcement) korur.
+    
+-   **7-Boyutlu Öznitelik Mühendisliği (Feature Vectorization):** Makine öğrenmesi modellerinin ihtiyaç duyduğu öznitelikleri canlı akıştan türetir:
+    
+    -   **İstatistiksel Analiz:** 30 saniyelik pencerelerde `stddev_pop` ile anlık volatilite hesaplaması yapar.
+        
+    -   **Vektörleştirme:** `VectorAssembler` kullanarak volatilite, hareketli ortalamalar ve momentum gibi 7 farklı değişkeni tek bir özellik vektöründe birleştirir.
+        
+-   **Çok Katmanlı Depolama (Polyglot Persistence):**
+    
+    -   **Lakehouse:** Analitik geçmiş ve ACID garantisi için verileri Partitioned Delta Lake (S3a) formatında arşivler.
+        
+    -   **Operasyonel DB:** Dashboard sisteminin anlık beslenmesi için PostgreSQL üzerine `foreachBatch` yöntemiyle asenkron yazım gerçekleştirir.
+        
+-   **Hata Toleransı (Resilience):** `checkpointLocation` kullanımı sayesinde sistem kesintiye uğrasa bile veri kaybı yaşamadan kaldığı yerden devam edebilen bir yapı sunar.
+    
+
+----------
+
+
+-   **🥉`consumer_lake.py` (The Data Archivist):** Apache Kafka'daki ham verileri (Raw Data) yakalayan ve ACID garantisi sunan **Delta Lake Bronze** katmanına kalıcı olarak kaydeden modüldür.
+    
+    -   **Spark-Delta Entegrasyonu:** Spark Session üzerinden Delta Lake uzantılarını (`DeltaSparkSessionExtension`) aktif ederek, nesne depolama katmanı (MinIO) üzerinde tam veri tutarlılığı sağlar.
+        
+    -   **Güvenli Veri Edinimi (Reliable Streaming):**
+        
+        -   **`startingOffsets: earliest`**: Kafka topic'indeki tüm geçmiş verileri en baştan itibaren okuyarak veri kaybını önler ve geçmişe dönük analiz (audit) imkanı tanır.
+            
+        -   **`failOnDataLoss: false`**: Herhangi bir veri kaybı durumunda sistemin durmasını engelleyerek sürekliliği (fault-tolerance) sağlar.
+            
+    -   **Akış Optimizasyonu (Backpressure Management):** `maxOffsetsPerTrigger=1000` yapılandırması ile her mikro-yığında maksimum 1000 mesaj işleyerek yüksek trafik altında sistemin tıkanmasını (throttling) önler.
+        
+    -   **Yapısal Dönüşüm:** Kafka'dan binary formatta gelen verileri string'e cast ederek tanımlanmış `StructType` şemasına göre kolonlara ayırır.
+        
+    -   **Delta Lake Depolama Stratejisi:**
+        
+        -   **`partitionBy("symbol")`**: Verileri kripto paraların sembollerine göre fiziksel klasörlere (partition) ayırarak, ilerideki sorgulama performansını optimize eder.
+            
+        -   **Checkpointing**: `checkpointLocation` kullanımı ile yazma işlemi sırasında oluşabilecek kesintilerde Spark'ın kaldığı yerden devam etmesini sağlar.
+            
+    -   **Mikro-Yığın Zamanlaması:** `trigger(processingTime='10 seconds')` ile verileri 10 saniyelik aralıklarla MinIO (S3a) üzerine `append` moduyla kalıcı olarak işler.
     
 -   🏗️ **`dbt_project/`**: Verinin Silver'dan Gold katmanına (Analitik katman) dönüşümü için gerekli SQL modellerini içerir. Veri temizleme ve aggregation işlemleri burada döner.
     
 
 #### 🧠 MLOps ve Otomasyon (Orchestration)
 
- **1️⃣ train_model.py**
--   **Ne yapıyor:**
-    -   Delta Lake Silver katmanındaki veriyi okur.        
-    -   Feature engineering yapar (`create_smart_features`).        
-    -   4 farklı regresyon modeli (Linear, Decision Tree, Random Forest, GBT) deneyip en iyi modeli seçer.      
-    -   MLflow ile modelin metriğini, parametrelerini ve versiyonunu kaydeder.       
--   **Nasıl çalışır:** 
-    -   Manuel olarak veya başka bir script üzerinden çağrıldığında çalışır.        
-    -   Checkpoint’i sıfırlamak **zorunlu değil**, ancak streaming state’ini tamamen sıfırlamak istiyorsanız klasörü silersiniz.
 
- **2️⃣ ml_watcher.py**
--   **Ne yapıyor:**  
-    -   Delta Lake tablosundaki satır sayısını sürekli kontrol eder.        
-    -   `MIN_ROWS_TO_START` hedefine ulaşıldığında otomatik olarak `train_model.py`’yi çalıştırır.        
-    -   İlk eğitimden sonra belirli aralıklarla (örn. 5 dk) tekrar veri kontrolü yapar ve eğitim tetikler.    
--   **Nasıl çalışır:**    
-    -   Otomatik tetikleme mekanizmasıdır, yani siz manuel başlatmasanız bile veri geldiğinde eğitim yapılır.      
-    -   Checkpoint silmeden çalışır ve önceki veriyi kaybetmez.
+**`train_model.py` (The Intelligent Backbone):** Spark MLlib ve MLflow entegrasyonu ile çalışan, Silver katmanındaki verileri kullanarak en optimize tahmin modellerini otonom olarak üreten bir model geliştirme fabrikasıdır.
+
+-   **Zaman Serisi Tabanlı Öznitelik Mühendisliği (`create_smart_features`):** Ham fiyat verilerini finansal göstergelere dönüştürür:
+    
+    -   **Lag (Gecikme) Analizi:** Geçmiş fiyat hareketlerini (`lag_1`, `lag_3`) modele girdi olarak sunar.
+        
+    -   **Hareketli Ortalamalar:** `ma_5` ve `ma_10` ile kısa ve orta vadeli trendleri hesaplar.
+        
+    -   **Dinamik Göstergeler:** Fiyat ivmesini (`momentum`) ve volatilite değişimlerini otonom olarak türetir.
+        
+-   **Algoritma Yarışması (AutoML League):** Sistem, her eğitim döngüsünde dört farklı güçlü algoritmayı birbiriyle yarıştırır:
+    
+    -   **ElasticNet (Linear Regression):** Düzenlileştirilmiş doğrusal analiz.
+        
+    -   **DecisionTree & RandomForest:** Karar ağacı tabanlı topluluk (ensemble) öğrenmesi.
+        
+    -   **GBTRegressor (Gradient Boosted Trees):** Hata odaklı ardışık modelleme.
+        
+-   **MLOps ve Deney Takibi (MLflow):** Her eğitim oturumu MLflow üzerinde kayıt altına alınır; RMSE ve $R^2$ metrikleri, öznitelik önem sıralamaları ve model parametreleri sistematik olarak loglanır.
+    
+-   **Akıllı Model Seçimi ve Dağıtımı (Champion Model):**
+    
+    -   **RMSE Optimizasyonu:** En düşük hata payına sahip model "KAZANAN" (Champion) olarak seçilir.
+        
+    -   **Production Deployment:** Kazanan model, `overwrite()` yöntemiyle MinIO (S3) üzerindeki üretim yoluna otomatik olarak taşınır ve `spark-silver` servisi tarafından canlı tahminleme için anında kullanılmaya başlanır.
+        
+-   **Veri Ayrıştırma Stratejisi:** Veriler rastgele değil, zaman serisi mantığına uygun olarak `%80` eğitim ve `%20` test (son gelen veriler) şeklinde kronolojik olarak ayrıştırılır (`TimeSeries Split`)
+
+ 
+Paylaştığın **`ml_watcher.py`** kodu, projenin **"Otonom Karar Mekanizması"**dır. Bu modül, sistemin sürekli başında durmana gerek kalmadan, verinin olgunlaştığını anlar ve model eğitim sürecini (`train_model.py`) akıllı bir şekilde tetikler.
+
+İşte bu kodun teknik işleyişini ve projedeki stratejik önemini anlatan profesyonel açıklama metni:
+
+----------
+
+### ⏳ Otonom Model İzleme ve Tetikleme Sistemi (ML Watcher)
+
+-   **`ml_watcher.py` (The Orchestration Sentry):** Delta Lake üzerindeki veri hacmini sürekli denetleyen ve sistemin "kendi kendini eğitme" (Self-training) kabiliyetini yöneten bekçi modülüdür.
+    
+    -   **Olay Güdümlü Eğitim (Event-Driven Training):** Sabit bir zaman çizelgesi yerine, veri odaklı bir strateji izler:
+        
+        -   **Avcı Modu (Initial Hunt):** Sistem ilk başladığında, Silver katmanında `MIN_ROWS_TO_START=20` eşiğine ulaşılana kadar 10 saniyede bir tarama yaparak ilk modelin en kısa sürede üretilmesini sağlar.
+            
+        -   **Devriye Modu (Maintenance):** İlk eğitim tamamlandıktan sonra, sistem kaynaklarını korumak amacıyla 5 dakikalık (`NORMAL_INTERVAL_SEC`) periyotlarla düzenli kontrollere geçer.
+            
+    -   **Doğrudan Delta Lake Entegrasyonu:** `deltalake` kütüphanesi ve `storage_options` üzerinden MinIO (S3) ile doğrudan konuşarak Spark'a ihtiyaç duymadan veri sayımı (row count) yapar; bu sayede düşük kaynak tüketimiyle izleme gerçekleştirir.
+        
+    -   **Alt Süreç Yönetimi (Subprocess Orchestration):** `subprocess.run` mekanizması ile `train_model.py` dosyasını bağımsız bir işlem olarak başlatır, çıktıları (stdout/stderr) yakalayarak eğitim başarısını doğrular.
+        
+    -   **Hata Yönetimi ve Dayanıklılık:** Henüz veri oluşmamış olması veya ağ gecikmeleri gibi istisnai durumları `try-except` blokları ile yöneterek izleme sürecinin kesintisiz devam etmesini sağlar.
     
 #### 🖥️ Arayüz ve Altyapı (UI & DevOps)
 
@@ -217,12 +321,11 @@ Kendi branch'inizi açın, ama benim `main`'ime dokunmayın."
 
 Bash
 ```
-# 1. Önce projeyi yerele indir
+# 1. Önce projeyi kendi bilgisyarına indir ya da dırekt 
+github üzerinden indir
 git clone https://github.com/propaper12/An-Open-Source-Real-Time-Financial-Lakehouse-Project.git
-
 # 2. Kendi adınıza veya özelliğinize göre yeni bir branch açın
 git checkout -b dev/herhangi_isim
-
 # 3. Geliştirmenizi yapın ve sadece bu branch'e pushlayın
 git push origin dev/herhangi_isim
 ```
