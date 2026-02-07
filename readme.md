@@ -2,9 +2,17 @@
 
 # Enterprise Real-Time Lakehouse & MLOps Platform
 
-Bu platform; Binance WebSocket ve özel API kanallarından gelen canlı market verilerini işleyen, **Delta Lake** mimarisi üzerinde depolayan, **Spark MLlib** ile yapay zeka modelleri eğiten ve **dbt** ile profesyonel analitik katmanlar oluşturan uçtan uca bir veri mühendisliği iskeletidir.
-<img width="2816" height="1536" alt="Gemini_Generated_Image_ywap46ywap46ywap" src="https://github.com/user-attachments/assets/0d3cabf3-f35d-4d77-ad85-a01477a16265" />
+Bu platform, Binance WebSocket ve özel API kanalları üzerinden elde edilen gerçek zamanlı piyasa verilerini yüksek performanslı veri işleme altyapısı ile analiz eden, Delta Lake mimarisi üzerinde güvenli ve ölçeklenebilir biçimde depolayan, Apache Spark MLlib ile gelişmiş makine öğrenmesi modelleri eğiten ve dbt aracılığıyla kurumsal seviyede analitik katmanlar oluşturan uçtan uca bir veri mühendisliği ve MLOps platformudur.
 
+Sistem mimarisi, verinin alınmasından, işlenmesine, depolanmasına, panellere aktarılmasına ve yapay zeka tabanlı tahminlerin üretilmesine kadar olan tüm süreci ortalama 5 saniye içerisinde tamamlayacak şekilde gerçek zamanlı olarak tasarlanmıştır. Bu sayede kullanıcılar, minimum gecikme ile yüksek doğruluklu analiz ve tahminlere erişebilmektedir.
+
+Platform, yüksek maliyetli ticari kripto analiz panellerine alternatif olarak, açık kaynak felsefesiyle geliştirilmiştir. Bu sayede bireysel kullanıcılar, araştırmacılar ve şirketler, sistemi özelleştirilebilir, ölçeklenebilir ve sürdürülebilir bir şekilde kendi ihtiyaçlarına göre yapılandırabilir.
+
+Özellikle kodlama yetkinliğine sahip kripto yatırımcıları ve veri mühendisleri, bu altyapıyı kendi stratejileri doğrultusunda geliştirerek, özel gösterge panelleri, ileri seviye analiz modülleri ve otomatik alım satım stratejileri oluşturabilir. Kurumsal tarafta ise şirketler, platformu kendi veri kaynaklarıyla entegre ederek kurum içi, yüksek performanslı ve güvenli bir analitik ekosistem inşa edebilir.
+
+Bu mimari, gerçek zamanlı veri akışı, büyük veri işleme, gelişmiş makine öğrenmesi ve profesyonel veri modelleme süreçlerini tek çatı altında birleştirerek, modern veri platformları için güçlü ve sürdürülebilir bir referans mimari sunar.
+
+<img width="2816" height="1536" alt="Gemini_Generated_Image_ywap46ywap46ywap" src="https://github.com/user-attachments/assets/0d3cabf3-f35d-4d77-ad85-a01477a16265" />
 ----------
 ## 📂 Proje Yapısı
 
