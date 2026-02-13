@@ -68,12 +68,12 @@ while True:
                 first_training_done = True
                 print(f" İlk eğitim bitti. Artık {int(NORMAL_INTERVAL_SEC/60)} dakikada bir çalışacağım.")
         else:
-            print(f"⏳ Veri Bekleniyor... Mevcut: {current_rows}/{MIN_ROWS_TO_START} (Kontrol: 10sn)")
+            print(f" Veri Bekleniyor... Mevcut: {current_rows}/{MIN_ROWS_TO_START} (Kontrol: 10sn)")
             time.sleep(10) 
             
     else:
         # MOD 2: DEVRİYE MODU
-        print(f"💤 Uyku Modu ({int(NORMAL_INTERVAL_SEC/60)} dk)... Zzz...")
+        print(f" Uyku Modu ({int(NORMAL_INTERVAL_SEC/60)} dk)... Zzz...")
         time.sleep(NORMAL_INTERVAL_SEC)
         
         # Uyanınca tekrar kontrol et

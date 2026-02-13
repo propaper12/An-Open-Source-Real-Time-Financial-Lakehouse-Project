@@ -119,8 +119,6 @@ else:
             k4.metric("RSI Durumu", f"{rsi:.1f}", rsi_state, delta_color="off")
 
             st.divider()
-
-            #2. grafilk grid düzeni
             
             # ANA GRAFİK
             if show_main:

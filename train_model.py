@@ -89,19 +89,19 @@ try:
     target_symbols = []
     
     if target_arg != "ALL" and target_arg != "None":
-        print(f" Hedef Odaklı Eğitim Modu: Sadece {target_arg} için çalışılacak.")
+        print(f"Hedef Odaklı Eğitim Modu: Sadece {target_arg} için çalışılacak.")
         count = base_df.filter(col("symbol") == target_arg).count()
         if count > 10:
             target_symbols = [target_arg]
         else:
             print(f" Uyarı: {target_arg} için yeterli veri yok ({count} satır).")
     else:
-        print("Yeterli verisi olan tüm symboller taranıyor.")
+        print(" Genel Tarama Modu: Yeterli verisi olan tüm semboller taranıyor.")
         symbol_counts = base_df.groupBy("symbol").count().filter("count > 20").collect()
         target_symbols = [row.symbol for row in symbol_counts]
 
     if not target_symbols:
-        print(" İşlenecek uygun symbol bulunamadı. Veri akışını bekleyin.")
+        print(" İşlenecek uygun sembol bulunamadı. Veri akışını bekleyin.")
         spark.stop()
         sys.exit(0)
 
@@ -192,7 +192,7 @@ try:
         gc.collect()
 
 except Exception as e:
-    print(f"🚨 KRİTİK SİSTEM HATASI: {e}")
+    print(f" KRİTİK SİSTEM HATASI: {e}")
     import traceback
     traceback.print_exc()
 

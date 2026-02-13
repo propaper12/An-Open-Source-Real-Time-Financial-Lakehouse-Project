@@ -77,4 +77,4 @@ with col2:
         time.sleep(1)
         st.rerun()
     else:
-        terminal.code("🛑 Hat kapalı. Veri akışı bekleniyor...", language="bash")
+        terminal.code("Hat kapalı. Veri akışı bekleniyor...", language="bash")

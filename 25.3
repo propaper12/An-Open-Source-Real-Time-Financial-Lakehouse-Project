@@ -26,6 +26,9 @@ CAdvisor=http://localhost:8090/containers/
 AirFlow=http://localhost:8081
 METABASE=http://localhost:3005/
 KRAFDrop=http://localhost:9010
+kafka_connect=http://localhost:8003 
+kafka_connect_2=http://localhost:8083/ bu sayfa gelınce kafa connect baglantısı gerceklesir.
+docker exec -it kafka-connect confluent-hub install --no-prompt confluentinc/kafka-connect-datagen:latest
 5. KOD GÜNCELLEME (Hot Reload / Update)
 Kodlarda değişiklik yaptığında tüm sistemi kapatıp açmana gerek yok.
 ornek:docker cp dashboard.py dashboard:/app/dashboard.py

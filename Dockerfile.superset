@@ -2,7 +2,6 @@ FROM apache/superset:latest
 
 USER root
 
-# Adres belirtmeden direkt kuruyoruz. Docker doğru yeri kendi bulur.
 RUN pip install --no-cache-dir psycopg2-binary pg8000
 
 USER superset

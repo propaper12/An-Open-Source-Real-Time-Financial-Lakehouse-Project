@@ -1,153 +1,149 @@
 import streamlit as st
 import socket
+from utils import inject_custom_css
 
-# SAYFA AYARLARI 
+# SAYFA AYARLARI
 st.set_page_config(
     page_title="Financial Lakehouse HQ", 
     layout="wide",
+    page_icon="🧠"
 )
 
-#BAŞLIK
-st.title(" Financial Lakehouse ")
-st.markdown("""
-**Komuta Merkezine Hoşgeldiniz.** Bu platform, **End-to-End (Uçtan Uca)** veri mühendisliği pipeline'larını yönetir, izler ve raporlar.
-""")
+# CSS ENJEKSİYONU
+inject_custom_css()
+
+#HEADER
+c1, c2 = st.columns([0.8, 0.2])
+with c1:
+    st.title("Financial Lakehouse HQ")
+    st.markdown("""
+    **Enterprise Data Pipeline Komuta Merkezi.** Uçtan uca veri akışını yönetin, mikroservisleri izleyin ve yapay zeka modellerini eğitin.
+    """)
+with c2:
+    st.image("https://cdn-icons-png.flaticon.com/512/9676/9676527.png", width=80)
 
 st.divider()
 
-# BÖLÜM 1: SİSTEM MİMARİSİ (VİTRİN)
-st.subheader(" Proje Mimarisi ve Veri Akışı")
-st.markdown("Verinin **Binance** kaynağından çıkıp **Son Kullanıcı** ekranına gelene kadar izlediği yol.")
+#BÖLÜM 1: SİSTEM MİMARİSİ
+st.subheader("📡 Canlı Sistem Mimarisi")
 
 architecture_code = """
 digraph G {
     rankdir=LR;
-    node [shape=box, style="filled,rounded", fontname="Sans-Serif", margin=0.2];
-    edge [color="#666666", arrowsize=0.8, fontsize=10];
+    bgcolor="transparent"; 
+    
+    node [shape=box, style="filled,rounded", fontname="Arial", fontsize=10, margin=0.2, fontcolor="white"];
+    edge [color="#555555", arrowsize=0.8, fontsize=10, fontcolor="white"];
 
     subgraph cluster_source {
-        label = "Ingestion"; style=dashed; color="#ff9900"; bgcolor="#fffdf5";
-        Binance [label="Binance API", fillcolor="#FCD535"]; Producer [label="Producer", fillcolor="#ffcc99"];
+        label = "Ingestion Layer"; style=dashed; color="#ff9900"; fontcolor="#ff9900"; bgcolor="#1E2127";
+        Binance [label="Binance API", fillcolor="#FCD535", fontcolor="black"]; 
+        Producer [label="Producer\n(Python)", fillcolor="#333333", color="#ff9900"];
     }
     subgraph cluster_streaming {
-        label = "Streaming"; style=dashed; color="#000000"; bgcolor="#f5f5f5";
-        Kafka [label="Kafka", fillcolor="#333333", fontcolor="white"];
+        label = "Streaming Layer"; style=dashed; color="#00ADB5"; fontcolor="#00ADB5"; bgcolor="#1E2127";
+        Kafka [label="Apache Kafka\nCluster", fillcolor="#00ADB5", fontcolor="black"];
     }
     subgraph cluster_processing {
-        label = "Processing & ML"; style=dashed; color="#ff3300"; bgcolor="#fff5f2";
-        Spark [label="Spark Streaming", fillcolor="#ff5733", fontcolor="white"]; ML_Trainer [label="AutoML Bot", fillcolor="#ffcc00"];
+        label = "Processing & AI"; style=dashed; color="#ff3300"; fontcolor="#ff3300"; bgcolor="#1E2127";
+        Spark [label="Spark Streaming", fillcolor="#ff5733"]; 
+        ML_Trainer [label="AutoML Bot", fillcolor="#C13584"];
     }
     subgraph cluster_storage {
-        label = "Storage"; style=dashed; color="#3366cc"; bgcolor="#f2f7ff";
-        MinIO [label="MinIO (Delta)", fillcolor="#ff9999"]; Postgres [label="PostgreSQL", fillcolor="#3366cc", fontcolor="white"];
+        label = "Lakehouse Storage"; style=dashed; color="#3366cc"; fontcolor="#3366cc"; bgcolor="#1E2127";
+        MinIO [label="MinIO\n(Delta Lake)", fillcolor="#3366cc"]; 
+        Postgres [label="PostgreSQL\n(Serving)", fillcolor="#2a4561"];
     }
     subgraph cluster_serving {
-        label = "UI & Monitoring"; style=dashed; color="#009933"; bgcolor="#f2fff5";
-        Streamlit [label="Dashboard", fillcolor="#ff4b4b", fontcolor="white"]; MLflow [label="MLflow", fillcolor="#0099cc", fontcolor="white"];
+        label = "User Interface"; style=dashed; color="#009933"; fontcolor="#009933"; bgcolor="#1E2127";
+        Streamlit [label="Dashboard app", fillcolor="#009933"]; 
+        MLflow [label="MLflow Registry", fillcolor="#0099cc"];
     }
 
     Binance -> Producer; Producer -> Kafka; Kafka -> Spark;
-    Spark -> MinIO; Spark -> Postgres; MinIO -> ML_Trainer;
-    ML_Trainer -> MLflow; ML_Trainer -> MinIO; Postgres -> Streamlit; Spark -> MLflow;
+    Spark -> MinIO [color="#00ADB5"]; Spark -> Postgres; 
+    MinIO -> ML_Trainer; ML_Trainer -> MLflow; 
+    ML_Trainer -> MinIO; Postgres -> Streamlit [color="#00ADB5", penwidth=2]; 
+    Spark -> MLflow;
 }
 """
 try:
     st.graphviz_chart(architecture_code, use_container_width=True)
 except:
-    st.warning("Mimari şema yüklenemedi.")
+    st.warning("Mimari şema yüklenemedi. Graphviz kurulu olmayabilir.")
 
 st.divider()
 
-# BÖLÜM 2: SERVİS ERİŞİM NOKTALARI
-st.subheader(" Servis Erişim Noktaları & Araçlar")
-st.markdown("Sistemi oluşturan mikroservislerin yönetim panellerine buradan erişebilirsiniz.")
+#BÖLÜM 2: SERVİS ERİŞİM NOKTALARI
+st.subheader("🛠️ Servis Erişim Noktaları")
+st.markdown("Mikroservis yönetim panellerine güvenli erişim sağlayın.")
 
-# Servis Listesi
 services = [
     {
-        "icon": "", "name": "MLflow Tracking", 
+        "icon": "🧪", "name": "MLflow Tracking", 
         "url": "http://localhost:5000", 
         "user": "-", "pass": "-", 
-        "desc": "Model deneylerini, metrikleri ve parametreleri takip edin."
+        "desc": "Model deneylerini ve metrikleri takip edin."
     },
     {
-        "icon": "", "name": "MinIO Console", 
+        "icon": "🗄️", "name": "MinIO Console", 
         "url": "http://localhost:9001", 
         "user": "admin", "pass": "admin12345", 
-        "desc": "Object Storage (S3) dosya gezgini ve bucket yönetimi."
+        "desc": "Object Storage (S3) bucket yönetimi."
     },
     {
-        "icon": "", "name": "Metabase BI", 
+        "icon": "📊", "name": "Metabase BI", 
         "url": "http://localhost:3005", 
         "user": "Setup", "pass": "-", 
-        "desc": "SQL tabanlı iş zekası raporlama ve dashboard aracı."
+        "desc": "Gelişmiş İş Zekası ve SQL raporlama."
     },
     {
-        "icon": "", "name": "Grafana Monitor", 
+        "icon": "📈", "name": "Grafana Monitor", 
         "url": "http://localhost:3001", 
         "user": "admin", "pass": "admin", 
-        "desc": "Sistem kaynakları (CPU/RAM) ve log görselleştirme."
+        "desc": "CPU, RAM ve Docker log izleme."
     },
     {
-        "icon": "", "name": "FastAPI Docs", 
+        "icon": "⚡", "name": "FastAPI Docs", 
         "url": "http://localhost:8000/docs", 
         "user": "-", "pass": "-", 
-        "desc": "Backend API uç noktaları (Swagger UI)."
+        "desc": "Backend API Swagger dokümantasyonu."
     },
     {
-        "icon": "", "name": "CAdvisor", 
+        "icon": "🐳", "name": "CAdvisor", 
         "url": "http://localhost:8090/containers/", 
         "user": "-", "pass": "-", 
-        "desc": "Docker konteynerlerinin anlık performans metrikleri."
+        "desc": "Konteyner performans metrikleri."
     }
 ]
 
-# Grid Düzeni 
-c1, c2 = st.columns(2)
-grid_cols = [c1, c2]
+# Kartları 3'lü kolon düzeninde yaptım.
+cols = st.columns(3)
 
 for i, service in enumerate(services):
-    col = grid_cols[i % 2] # Sırayla sol-sağ dağıt
-    
+    col = cols[i % 3]
     with col:
+        # st.container(border=True) kullanıyoruz, CSS ile buna stil verdik
         with st.container(border=True):
-            # Üst Kısım: İkon ve Başlık
-            sub_c1, sub_c2 = st.columns([1, 4])
-            with sub_c1:
-                st.markdown(f"# {service['icon']}")
-            with sub_c2:
-                st.subheader(service['name'])
+            # İkon ve Başlık Yan Yana
+            c_icon, c_text = st.columns([1, 4])
+            with c_icon:
+                st.markdown(f"<h1 style='text-align: center;'>{service['icon']}</h1>", unsafe_allow_html=True)
+            with c_text:
+                st.markdown(f"**{service['name']}**")
                 st.caption(service['desc'])
             
-            st.divider()
-            
-            # Orta Kısım: Şifreler ve Detaylar
-            if service['name'] == "Metabase BI":
-                with st.expander(" Kurulum Bilgileri (Tıkla)"):
-                    st.info("""
-                    **Database Type:** PostgreSQL
-                    **Host:** postgres
-                    **DB Name:** market_db
-                    **User:** admin
-                    **Password:** admin
-                    """)
-                    st.warning("İlk girişte 'Setup' ekranı gelecektir.")
-            
-            elif service['user'] != "-":
-                k1, k2 = st.columns(2)
-                with k1:
-                    st.text("Kullanıcı Adı:")
-                    st.code(service['user'], language="text")
-                with k2:
-                    st.text("Şifre:")
-                    st.code(service['pass'], language="text")
-            else:
-                st.success(" Kimlik doğrulama gerekmez (Açık Erişim)")
+            # Detaylar (Expander içinde gizli, daha temiz görünüm)
+            with st.expander("Giriş Bilgileri"):
+                if service['name'] == "Metabase BI":
+                    st.code("User: admin\nPass: admin\nDB: market_db", language="yaml")
+                elif service['user'] != "-":
+                    st.code(f"User: {service['user']}\nPass: {service['pass']}", language="yaml")
+                else:
+                    st.success("Açık Erişim")
 
-            # Alt Kısım: Buton
-            st.markdown("")
-            st.link_button(f" {service['name']} Paneline Git", service['url'], use_container_width=True)
+            # Buton
+            st.link_button(f" {service['name']} Aç", service['url'], use_container_width=True)
 
 st.markdown("---")
-
-st.caption("2026 Real-Time Financial Lakehouse Madeby Ömer Çakan")
+st.caption("© 2026 Real-Time Financial Lakehouse | Architect: Ömer Çakan")

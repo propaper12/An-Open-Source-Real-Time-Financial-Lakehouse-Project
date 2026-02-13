@@ -99,7 +99,7 @@ def start_stream(data_type, device_id):
             time.sleep(1) 
             
         except KeyboardInterrupt:
-            logging.info("⛔ Akış durduruldu.")
+            logging.info(" Akış durduruldu.")
             break
         except Exception as e:
             logging.error(f"Hata: {e}")

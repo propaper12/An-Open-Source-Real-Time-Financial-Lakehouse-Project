@@ -27,7 +27,7 @@ def extract_algo_name(row):
     run_name = row.get('tags.mlflow.runName', str(row.name))
     if isinstance(run_name, str):
         if "RandomForest" in run_name: return "Random Forest"
-        if "Elastic" in run_name: return "ElasticNet Regression" # <-- ARTIK AYRI
+        if "Elastic" in run_name: return "ElasticNet Regression" 
         if "Linear" in run_name: return "Linear Regression"
         if "DecisionTree" in run_name: return "Decision Tree"
         if "Gradient" in run_name or "GBT" in run_name: return "Gradient Boosted"
