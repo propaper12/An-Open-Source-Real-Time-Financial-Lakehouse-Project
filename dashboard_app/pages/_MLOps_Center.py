@@ -1,161 +1,165 @@
 import streamlit as st
 import pandas as pd
 import mlflow
-from mlflow.tracking import MlflowClient
 import plotly.express as px
-import os
-from datetime import datetime
+import plotly.graph_objects as go
+from utils import inject_custom_css, init_mlflow
 
-#AYARLAR
-st.set_page_config(page_title="MLOps Studio", layout="wide")
+st.set_page_config(page_title="AutoML Liderlik Tablosu", layout="wide", page_icon="🏆")
+inject_custom_css()
 
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_INTERNAL_URI", "http://mlflow:5000")
-MLFLOW_EXTERNAL_UI = "http://localhost:5000"
+# MLflow bağlantısını kontrol ediyorum. Bağlantı yoksa sayfayı boşuna yüklemem.
+is_connected, active_uri = init_mlflow()
 
-mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-
-#YARDIMCI FONKSİYONLAR 
-def extract_algo_name(row):
-    """
-    Run isimlerinden temiz Algoritma adı çıkarır.
-    """
-    if pd.notna(row.get('tags.winner_algo')):
-        return row['tags.winner_algo'].replace('_', ' ')
-    if pd.notna(row.get('params.winner_algo')):
-        return row['params.winner_algo'].replace('_', ' ')
-        
-    run_name = row.get('tags.mlflow.runName', str(row.name))
-    if isinstance(run_name, str):
-        if "RandomForest" in run_name: return "Random Forest"
-        if "Elastic" in run_name: return "ElasticNet Regression" 
-        if "Linear" in run_name: return "Linear Regression"
-        if "DecisionTree" in run_name: return "Decision Tree"
-        if "Gradient" in run_name or "GBT" in run_name: return "Gradient Boosted"
-        if "CHAMPION" in run_name: return " CHAMPION MODEL"
-    
-    return "Unknown Model"
-
-def get_mlflow_data():
-    try:
-        client = MlflowClient()
-        experiment = client.get_experiment_by_name("RealTime_AutoML_League")
-        
-        if experiment:
-            runs = mlflow.search_runs(
-                experiment_ids=[experiment.experiment_id],
-                order_by=["start_time DESC"]
-            )
-            return runs
-        return pd.DataFrame()
-    except Exception as e:
-        st.error(f"MLflow Bağlantı Hatası: {e}")
-        return pd.DataFrame()
-
-# ARAYÜZ
-st.title(" Enterprise AutoML & Model Performance Analytics")
-st.markdown("Bu panel, sistemdeki yapay zeka modellerinin **performans metriklerini, kararlılığını ve şampiyon seçimlerini** analiz eder.")
-
-st.divider()
-
-df_runs = get_mlflow_data()
-
-if not df_runs.empty:
-    # VERİ TEMİZLİĞİ
-    df_runs['Algorithm'] = df_runs.apply(extract_algo_name, axis=1)
-    
-    if 'metrics.rmse' in df_runs.columns:
-        df_runs['metrics.rmse'] = pd.to_numeric(df_runs['metrics.rmse'], errors='coerce').fillna(0)
-    
-    if 'metrics.r2' in df_runs.columns:
-        df_runs['metrics.r2'] = pd.to_numeric(df_runs['metrics.r2'], errors='coerce').fillna(0)
-        df_runs['safe_size'] = df_runs['metrics.r2'].apply(lambda x: max(0.1, x) if x > 0 else 0.1)
+# --- BAŞLIK VE DURUM ---
+c1, c2 = st.columns([3, 1])
+with c1:
+    st.title("🏆 AutoML Liderlik Tablosu")
+    st.caption("Proje: Gerçek Zamanlı Finansal Tahmin | Hedef Değişken: Fiyat ($)")
+with c2:
+    if is_connected:
+        st.success(f"Bağlantı Başarılı: {active_uri}")
     else:
-        df_runs['metrics.r2'] = 0.0
-        df_runs['safe_size'] = 0.1
+        st.error("Bağlantı Yok (Offline)")
 
-    # KPI KARTLARI
-    if 'metrics.rmse' in df_runs.columns:
-        valid_runs = df_runs[df_runs['metrics.rmse'] > 0]
-        if not valid_runs.empty:
-            best_run = valid_runs.sort_values(by='metrics.rmse', ascending=True).iloc[0]
+# --- VERİ İŞLEME VE ANALİZ ---
+if is_connected:
+    try:
+        runs = mlflow.search_runs(search_all_experiments=True)
+    except:
+        runs = pd.DataFrame()
+
+    if not runs.empty:
+        # 1. VERİ TEMİZLİĞİ VE STANDARDİZASYON
+        # MLflow'dan gelen veriler bazen karışık olabilir. Algoritma isimlerini temizleyip
+        # okunabilir hale getiriyorum (örn: 'random_forest' -> 'RANDOM FOREST')
+        if 'tags.winner_algo' in runs.columns:
+            runs['Model'] = runs['tags.winner_algo'].fillna('Bilinmeyen Model')
+        else:
+            runs['Model'] = runs.get('tags.mlflow.runName', 'Model')
+        
+        runs['Model'] = runs['Model'].str.replace('_', ' ').str.upper()
+
+        # Metrikleri sayısal formata çeviriyorum, yoksa grafik çizemeyiz.
+        if 'metrics.rmse' in runs.columns:
+            runs['RMSE'] = pd.to_numeric(runs['metrics.rmse'], errors='coerce').fillna(9999)
+        else:
+            runs['RMSE'] = 9999.0
             
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric(" Şampiyon Model", best_run['Algorithm'], "Canlıda Aktif")
-            with col2:
-                st.metric(" En Düşük Hata (RMSE)", f"{best_run['metrics.rmse']:.2f} $", delta_color="inverse")
-            with col3:
-                st.metric(" En Yüksek Başarı (R2)", f"{best_run['metrics.r2']:.4f}")
-            with col4:
-                st.metric(" Toplam Model Eğitimi", len(df_runs))
+        if 'metrics.r2' in runs.columns:
+            runs['R2'] = pd.to_numeric(runs['metrics.r2'], errors='coerce').fillna(0)
+        else:
+            runs['R2'] = 0.0
+        
+        # Eğitim süresini hesaplıyorum. Hızlı model mi yavaş model mi anlamak için kritik.
+        if 'end_time' in runs.columns and 'start_time' in runs.columns:
+            runs['Sure_ms'] = (pd.to_datetime(runs['end_time']) - pd.to_datetime(runs['start_time'])).dt.total_seconds() * 1000
+        else:
+            runs['Sure_ms'] = pd.to_numeric(runs.get('metrics.training_duration', 100), errors='coerce').fillna(100)
 
-    st.divider()
+        # 2. SIRALAMA MANTIĞI (LEADERBOARD LOGIC)
+        leaderboard = runs.sort_values(by='RMSE', ascending=True).reset_index(drop=True)
+        leaderboard['Sira'] = leaderboard.index + 1
+        
+        leaderboard['Balon_Boyutu'] = leaderboard['R2'].apply(lambda x: max(float(x), 0.01))
+        
+        champion = leaderboard.iloc[0]
 
-    # GRAFİK ALANI
-    c1, c2 = st.columns(2)
-    
-    with c1:
-        st.subheader(" Algoritma Kararlılık Analizi")
-        fig_box = px.box(
-            df_runs, 
-            x="Algorithm", 
-            y="metrics.rmse", 
-            color="Algorithm",
-            points="all",
-            title="Hata Dağılımı (Box Plot)",
+        def get_badges(row):
+            badges = []
+            if row['Sira'] == 1: badges.append("🏆 ŞAMPİYON")
+            if row['Sure_ms'] == leaderboard['Sure_ms'].min(): badges.append("⚡ EN HIZLI")
+            if row['R2'] > 0.95: badges.append("💎 HASSAS")
+            return " ".join(badges)
+
+        leaderboard['Rozetler'] = leaderboard.apply(get_badges, axis=1)
+
+        # --- GÖRSEL ALAN (DASHBOARD) ---
+        
+        st.markdown("### 🥇 Canlıya Alınması Önerilen Model")
+        with st.container():
+            col_bp, col_metrics = st.columns([2, 1])
+            
+            with col_bp:
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; gap: 10px; padding: 20px; overflow-x: auto;">
+                    <div style="background: #333; padding: 10px; border-radius: 4px; color: #fff; white-space: nowrap;">HAM VERİ</div>
+                    <div style="color: #666;">➜</div>
+                    <div style="background: #333; padding: 10px; border-radius: 4px; color: #fff; white-space: nowrap;">ÖN İŞLEME</div>
+                    <div style="color: #666;">➜</div>
+                    <div style="background: #00CC96; padding: 15px; border-radius: 4px; color: #000; font-weight: bold; border: 2px solid white; white-space: nowrap;">
+                        {champion['Model']}
+                    </div>
+                    <div style="color: #666;">➜</div>
+                    <div style="background: #333; padding: 10px; border-radius: 4px; color: #fff; white-space: nowrap;">TAHMİN</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with col_metrics:
+                c1, c2 = st.columns(2)
+                c1.metric("RMSE (Hata Payı)", f"{champion['RMSE']:.4f}", delta_color="inverse")
+                c2.metric("R2 Başarısı", f"{champion['R2']:.4f}")
+                st.info(f"Eğitim Süresi: {champion['Sure_ms']:.0f} ms")
+
+        st.divider()
+
+        # ORTA KISIM: HIZ vs BAŞARI ANALİZİ
+        st.markdown("### 📈 Hız ve Başarı Analizi")
+        
+        fig = px.scatter(
+            leaderboard, 
+            x="Sure_ms", 
+            y="RMSE", 
+            color="Model", 
+            size="Balon_Boyutu", 
+            hover_data=["Sira", "Rozetler", "R2"],
             template="plotly_dark",
-            labels={"metrics.rmse": "Hata Payı (RMSE)", "Algorithm": "Algoritma"}
+            color_discrete_sequence=px.colors.qualitative.Pastel
         )
-        st.plotly_chart(fig_box, use_container_width=True)
-
-    with c2:
-        st.subheader(" Başarı vs Hata Analizi")
-        fig_scatter = px.scatter(
-            df_runs,
-            x="metrics.rmse",
-            y="metrics.r2",
-            color="Algorithm",
-            size="safe_size",
-            hover_data=["start_time"],
-            title="R2 Skoru vs RMSE İlişkisi",
-            template="plotly_dark",
-            labels={"metrics.rmse": "Hata (RMSE)", "metrics.r2": "Başarı (R2)"}
+        
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis_title="Tahmin Süresi (ms) [Düşük daha iyi]",
+            yaxis_title="RMSE Hata (Düşük daha iyi)",
+            font=dict(family="Arial", size=12, color="white"),
+            legend=dict(orientation="h", y=1.1)
         )
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        
+        if not leaderboard.empty:
+            min_dur = leaderboard['Sure_ms'].min()
+            min_rmse = leaderboard['RMSE'].min()
+            mean_dur = leaderboard['Sure_ms'].mean()
+            mean_rmse = leaderboard['RMSE'].mean()
+            
+            fig.add_shape(type="rect",
+                x0=min_dur * 0.9, y0=min_rmse * 0.9,
+                x1=mean_dur, y1=mean_rmse,
+                line=dict(color="#00CC96", width=2, dash="dot"),
+            )
+            
+        st.plotly_chart(fig, use_container_width=True)
 
-    # Grafik 3
-    st.subheader("⏳ Zaman Serisi Performans Takibi")
-    fig_line = px.line(
-        df_runs, 
-        x="start_time", 
-        y="metrics.rmse", 
-        color="Algorithm",
-        markers=True,
-        title="Model Hata Oranının Zamanla Değişimi",
-        template="plotly_dark",
-        labels={"start_time": "Eğitim Zamanı", "metrics.rmse": "Hata (RMSE)"}
-    )
-    st.plotly_chart(fig_line, use_container_width=True)
-
-    #TABLO
-    st.divider()
-    st.subheader(" Detaylı Eğitim Kayıtları")
-    
-    cols = ['start_time', 'Algorithm', 'metrics.rmse', 'metrics.r2', 'run_id']
-    cols = [c for c in cols if c in df_runs.columns]
-    
-    display_df = df_runs[cols].head(20).copy()
-    display_df.columns = ["Zaman", "Algoritma", "Hata (RMSE)", "Başarı (R2)", "Run ID"]
-    
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
-
+        # ALT KISIM: DETAYLI TABLO
+        st.markdown("### 📋 Model Sıralaması")
+        
+        display_df = leaderboard[['Sira', 'Model', 'Rozetler', 'RMSE', 'R2', 'Sure_ms', 'run_id']]
+        
+        st.dataframe(
+            display_df,
+            column_config={
+                "Sira": st.column_config.NumberColumn("Sıra", format="#%d"),
+                "RMSE": st.column_config.NumberColumn("Hata (RMSE)", format="%.4f"),
+                "R2": st.column_config.ProgressColumn("Doğruluk (R2)", format="%.2f", min_value=-1, max_value=1),
+                "Sure_ms": st.column_config.NumberColumn("Süre (ms)", format="%d ms"),
+                "Rozetler": st.column_config.TextColumn("Ödüller"),
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+        
+    else:
+        st.warning("Henüz eğitilmiş model bulunamadı.")
+        st.info("Lütfen önce 'train_model.py' dosyasını çalıştırın.")
 else:
-    st.warning(" Henüz analiz edilecek eğitim verisi bulunamadı.")
-    st.info("Sistem veri topladıkça burası otomatik dolacaktır.")
-
-#SIDEBAR
-with st.sidebar:
-    st.header(" Kontrol Paneli")
-    if st.button(" Analizi Yenile", type="primary"):
-
-        st.rerun()
+    st.error("MLflow bağlantısı kurulamadı. Lütfen Docker ayarlarınızı kontrol edin.")
