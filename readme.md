@@ -35,7 +35,9 @@ Bu mimari, gerçek zamanlı veri akışı, büyük veri işleme, gelişmiş maki
 │   ├── profiles.yml
 │   ├── Dockerfile
 │   └── models/                 # SQL Modelleri (Staging & Marts)
-│  └───target/  
+│  └───target/
+├── tests/                      #
+│   ├── test.core.py            # 
 ├── Dokumanlar/                 # Proje Dokümantasyonu
 ├──25.3                         #kullancının projemle alakalı herseye ualsacagı genel yazılarım
 ├── batch_processor.py          # Toplu veri işleme servisi
