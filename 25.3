@@ -48,3 +48,5 @@ FROM crypto_prices
 WHERE symbol = 'BTCUSDT' -- İstersen sembolü değiştirebilirsin
 ORDER BY processed_time DESC
 LIMIT 100;
+
+ıot veri akısı:docker exec -it spark-silver python test_generic.py
