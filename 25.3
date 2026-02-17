@@ -25,7 +25,10 @@ MLFLOW=http://localhost:5000/
 CAdvisor=http://localhost:8090/containers/
 AirFlow=http://localhost:8081
 METABASE=http://localhost:3005/
-
+KRAFDrop=http://localhost:9010
+kafka_connect=http://localhost:8003 
+kafka_connect_2=http://localhost:8083/ bu sayfa gelınce kafa connect baglantısı gerceklesir.
+docker exec -it kafka-connect confluent-hub install --no-prompt confluentinc/kafka-connect-datagen:latest
 5. KOD GÜNCELLEME (Hot Reload / Update)
 Kodlarda değişiklik yaptığında tüm sistemi kapatıp açmana gerek yok.
 ornek:docker cp dashboard.py dashboard:/app/dashboard.py
@@ -45,3 +48,14 @@ FROM crypto_prices
 WHERE symbol = 'BTCUSDT' -- İstersen sembolü değiştirebilirsin
 ORDER BY processed_time DESC
 LIMIT 100;
+
+# Terminalden: bunu bir kere yazmamız yeterli discord ve slack yerine kullanılack alert sıstemının ılk hali
+docker exec -it postgres psql -U admin -d market_db -c "
+CREATE TABLE IF NOT EXISTS system_alerts (
+    id SERIAL PRIMARY KEY,
+    level VARCHAR(50), -- INFO, WARNING, ERROR
+    source VARCHAR(50), -- ML_Watcher, Quality_Gate
+    message TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);"

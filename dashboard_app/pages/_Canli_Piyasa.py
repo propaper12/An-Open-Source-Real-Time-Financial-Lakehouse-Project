@@ -2,180 +2,170 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import time
-import sys
 import os
 import docker
-from datetime import datetime
+from sqlalchemy import create_engine
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils import get_s3_fs, BUCKET_NAME
+st.set_page_config(page_title="Canlı Piyasa", layout="wide", page_icon="📈")
 
-st.set_page_config(page_title="Canlı Piyasa", layout="wide")
+st.markdown("""
+<style>
+    [data-testid="stMetricValue"] { font-size: 24px; }
+    .block-container { padding-top: 1rem; }
+</style>
+""", unsafe_allow_html=True)
 
+# VERİTABANI BAĞLANTISI 
+DB_URL = "postgresql://admin:admin@postgres:5432/market_db"
+
+def calculate_technical_indicators(df):
+    """
+    Teknik İndikatörleri Hesapla: Bollinger, RSI ve MACD
+    """
+    # 1. Bollinger
+    df['SMA_20'] = df['average_price'].rolling(window=20).mean()
+    df['Std_Dev'] = df['average_price'].rolling(window=20).std()
+    df['Bollinger_Upper'] = df['SMA_20'] + (df['Std_Dev'] * 2)
+    df['Bollinger_Lower'] = df['SMA_20'] - (df['Std_Dev'] * 2)
+    
+    # 2. RSI
+    delta = df['average_price'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+    
+    # 3. MACD
+    df['EMA12'] = df['average_price'].ewm(span=12, adjust=False).mean()
+    df['EMA26'] = df['average_price'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = df['EMA12'] - df['EMA26']
+    df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    
+    return df.fillna(0)
+
+def get_data_from_db():
+    try:
+        engine = create_engine(DB_URL)
+        query = "SELECT * FROM market_data ORDER BY processed_time DESC LIMIT 300"
+        df = pd.read_sql(query, engine)
+        df = df.sort_values(by='processed_time', ascending=True)
+        df = calculate_technical_indicators(df)
+        return df
+    except Exception as e:
+        st.error(f"DB Hatası: {e}")
+        return pd.DataFrame()
+
+#SIDEBAR 
 with st.sidebar:
-    st.header("🎛️ Kontrol Merkezi")
-    st.info("Sistem konteynerlerini buradan yönetebilirsiniz.")
-    st.markdown("---")
+    st.header(" Kontrol Paneli")
     
     try:
         client = docker.from_env()
-        try:
-            container = client.containers.get('binance_producer')
-            status = container.status
-            
-            st.write(f"**Veri Akışı Durumu:**")
-            
-            if status == 'running':
-                st.success("🟢 AKTİF (Veri Akıyor)")
-                if st.button("⛔ AKIŞI DURDUR", type="primary", use_container_width=True):
-                    with st.spinner("Bot durduruluyor..."):
-                        container.stop()
-                    st.rerun()
-            else:
-                st.error("🔴 DURDU (Kapalı)")
-                if st.button("▶️ AKIŞI BAŞLAT", type="secondary", use_container_width=True):
-                    with st.spinner("Bot başlatılıyor..."):
-                        container.start()
-                    st.rerun()
-                    
-        except docker.errors.NotFound:
-            st.warning("⚠️ Producer konteyneri bulunamadı.")
-            
-    except Exception as e:
-        st.error("Docker servisine erişilemedi.")
+        container = client.containers.get('binance_producer')
+        if container.status == 'running':
+            st.success(" Veri Akışı: AKTİF")
+            if st.button(" Durdur"): container.stop(); st.rerun()
+        else:
+            st.error(" Veri Akışı: DURDU")
+            if st.button(" Başlat"): container.start(); st.rerun()
+    except:
+        st.warning("Docker bağlantısı yok.")
 
     st.markdown("---")
-    st.caption("Auto-refresh: 2s")
+    st.subheader("Görünüm Ayarları")
+    show_main = st.checkbox("Ana Fiyat Grafiği", value=True)
+    show_risk = st.checkbox("Risk Analizi (Bollinger)", value=True)
+    show_momentum = st.checkbox("Momentum (RSI/MACD)", value=True)
 
-st.header("📈 Enterprise Real-Time Monitor")
+#ANA EKRAN
+st.title(" Pro-Trader Cockpit")
+st.caption("AI Tahminleri ve Çoklu Teknik Analiz Göstergeleri")
 
-try:
-    s3 = get_s3_fs()
-    
-    files = s3.glob(f"s3://{BUCKET_NAME}/silver_layer_delta/**/*.parquet")
-    
-    if not files:
-        st.warning("📡 Veri akışı bekleniyor... (MinIO'da henüz parquet dosyası oluşmadı)")
-        time.sleep(3)
-        st.rerun()
-    else:
-       
-        recent_files = sorted(files)[-20:] 
-        
-        dfs = []
-        for f in recent_files:
-            try:
-                temp_df = pd.read_parquet(s3.open(f))
-                
-                if 'symbol' not in temp_df.columns:
-                    parts = f.split("/")
-                    for p in parts:
-                        if p.startswith("symbol="):
-                            extracted_sym = p.split("=")[1]
-                            temp_df['symbol'] = extracted_sym
-                            break
-                
-                if 'symbol' in temp_df.columns:
-                    dfs.append(temp_df)
-                    
-            except Exception as read_err:
-                print(f"Dosya okuma hatası ({f}): {read_err}")
-                continue
+df = get_data_from_db()
 
-        if not dfs:
-            st.warning("Veri dosyaları var ama okunabilir formatta değil. Bekleniyor...")
-            time.sleep(2)
-            st.rerun()
-            
-        df = pd.concat(dfs)
-        
-        available_symbols = df['symbol'].unique()
-        
-        if len(available_symbols) > 0:
-            selected_sym = st.selectbox("İzlenecek Kaynak (Borsa / IoT)", available_symbols)
-            
-            df_sym = df[df['symbol'] == selected_sym].sort_values('processed_time')
-            
-            df_chart = df_sym.tail(100)
-            
-            if not df_chart.empty:
-                last = df_chart.iloc[-1]
-                last_time_str = str(last['processed_time'])
-                
-                st.markdown(f"###  Son Güncelleme: `{last_time_str}`")
-                
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Anlık Değer / Fiyat", f"{last['average_price']:,.2f} $")
-                
-                pred_price = last.get('predicted_price', last['average_price'])
-                diff = pred_price - last['average_price']
-                
-                c2.metric("AI Tahmin (Gelecek)", f"{pred_price:,.2f} $", f"{diff:+.2f}")
-                c3.metric("Volatilite Risk Skoru", f"{last['volatility']:.4f}")
-
-                st.divider()
-
-                col_graph, col_table = st.columns([2, 1])
-                
-                with col_graph:
-                    st.subheader("📊 Canlı Analiz Grafiği")
-                    fig = go.Figure()
-                    
-                    # Gerçek Değer
-                    fig.add_trace(go.Scatter(
-                        x=df_chart['processed_time'], 
-                        y=df_chart['average_price'], 
-                        name='Gerçek Değer',
-                        line=dict(color='#00CC96', width=3)
-                    ))
-                    
-                    if 'predicted_price' in df_chart.columns:
-                        fig.add_trace(go.Scatter(
-                            x=df_chart['processed_time'], 
-                            y=df_chart['predicted_price'], 
-                            name='AI Tahmin', 
-                            line=dict(dash='dot', color='#AB63FA', width=2)
-                        ))
-                    
-                    fig.update_layout(
-                        template="plotly_dark", 
-                        height=450, 
-                        margin=dict(l=20, r=20, t=30, b=20),
-                        legend=dict(orientation="h", y=1.1)
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-
-                with col_table:
-                    st.subheader("Son Veriler")
-                    df_table = df_chart.tail(15).sort_values(by='processed_time', ascending=False)
-                    
-                    cols_to_show = ['processed_time', 'average_price']
-                    if 'predicted_price' in df_table.columns:
-                        cols_to_show.append('predicted_price')
-                        
-                    display_table = df_table[cols_to_show].copy()
-                    
-                    rename_map = {
-                        'processed_time': 'Zaman', 
-                        'average_price': 'Fiyat ($)',
-                        'predicted_price': 'AI Tahmin ($)'
-                    }
-                    display_table = display_table.rename(columns=rename_map)
-                    
-                    st.dataframe(display_table, use_container_width=True, hide_index=True, height=450)
-
-                time.sleep(2)
-                st.rerun()
-            else:
-                st.info(f"{selected_sym} için veri yükleniyor...")
-        else:
-            st.warning("Veri formatı uyuşmazlığı. Symbol bilgisi okunamadı.")
-            time.sleep(2)
-            st.rerun()
-
-except Exception as e:
-    st.error(f"Sistem Hatası: {e}")
-    import traceback
-    st.code(traceback.format_exc())
-    time.sleep(5)
+if df.empty:
+    st.warning("Veri bekleniyor...")
+    time.sleep(2)
     st.rerun()
+else:
+    available_symbols = df['symbol'].unique()
+    if len(available_symbols) > 0:
+        selected_sym = st.selectbox("Varlık Seçimi", available_symbols, label_visibility="collapsed")
+        df_chart = df[df['symbol'] == selected_sym]
+        
+        if not df_chart.empty:
+            last = df_chart.iloc[-1]
+            
+        
+            last_time_str = pd.to_datetime(last['processed_time']).strftime('%Y-%m-%d %H:%M:%S')            
+            st.markdown(f"###  Son Güncelleme: `{last_time_str}` (UTC)")
+            
+            st.divider()
+
+            # 1. KPI
+            curr = last['average_price']
+            pred = last['predicted_price']
+            diff = pred - curr
+            rsi = last['RSI']
+            
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric(" Fiyat", f"{curr:,.2f} $")
+            k2.metric(" AI Hedef", f"{pred:,.2f} $", f"{diff:+.2f} $", delta_color="normal" if diff > 0 else "inverse")
+            
+            signal = "AL " if diff > 0 else "SAT "
+            k3.metric("Sinyal", signal, f"Güven: %99.9")
+            
+            rsi_state = "Aşırı Alım" if rsi > 70 else "Aşırı Satım" if rsi < 30 else "Normal"
+            k4.metric("RSI Durumu", f"{rsi:.1f}", rsi_state, delta_color="off")
+
+            st.divider()
+            
+            # ANA GRAFİK
+            if show_main:
+                st.subheader(" Fiyat ve AI Tahmini")
+                fig_main = go.Figure()
+                fig_main.add_trace(go.Scatter(x=df_chart['processed_time'], y=df_chart['average_price'], name='Gerçek Fiyat', line=dict(color='#00CC96', width=2), fill='tozeroy', fillcolor='rgba(0, 204, 150, 0.1)'))
+                fig_main.add_trace(go.Scatter(x=df_chart['processed_time'], y=df_chart['predicted_price'], name='Yapay Zeka', line=dict(dash='dot', color='#AB63FA', width=2)))
+                fig_main.update_layout(template="plotly_dark", height=400, margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", y=1.1))
+                st.plotly_chart(fig_main, use_container_width=True)
+
+            #  ALT GRAFİKLER
+            col_left, col_right = st.columns(2)
+            
+            with col_left:
+                if show_risk:
+                    st.subheader(" Volatilite (Bollinger Bantları)")
+                    fig_bol = go.Figure()
+                    fig_bol.add_trace(go.Scatter(x=df_chart['processed_time'], y=df_chart['Bollinger_Upper'], line=dict(width=0), showlegend=False))
+                    fig_bol.add_trace(go.Scatter(x=df_chart['processed_time'], y=df_chart['Bollinger_Lower'], fill='tonexty', fillcolor='rgba(0, 150, 255, 0.1)', line=dict(width=0), name='Bant Aralığı'))
+                    fig_bol.add_trace(go.Scatter(x=df_chart['processed_time'], y=df_chart['average_price'], line=dict(color='white', width=1), name='Fiyat'))
+                    fig_bol.update_layout(template="plotly_dark", height=350, margin=dict(l=0, r=0, t=10, b=0), showlegend=False)
+                    st.plotly_chart(fig_bol, use_container_width=True)
+            
+            with col_right:
+                if show_momentum:
+                    st.subheader(" Momentum (MACD & RSI)")
+                    tab_rsi, tab_macd = st.tabs(["RSI", "MACD"])
+                    
+                    with tab_rsi:
+                        fig_rsi = go.Figure()
+                        fig_rsi.add_trace(go.Scatter(x=df_chart['processed_time'], y=df_chart['RSI'], line=dict(color='#FF6692', width=2)))
+                        fig_rsi.add_hline(y=70, line_dash="dash", line_color="red")
+                        fig_rsi.add_hline(y=30, line_dash="dash", line_color="green")
+                        fig_rsi.update_layout(template="plotly_dark", height=300, margin=dict(l=0, r=0, t=10, b=0), yaxis=dict(range=[0, 100]))
+                        st.plotly_chart(fig_rsi, use_container_width=True)
+                    
+                    with tab_macd:
+                        fig_macd = go.Figure()
+                        fig_macd.add_trace(go.Scatter(x=df_chart['processed_time'], y=df_chart['MACD'], name='MACD', line=dict(color='#00CC96')))
+                        fig_macd.add_trace(go.Scatter(x=df_chart['processed_time'], y=df_chart['Signal_Line'], name='Sinyal', line=dict(color='#EF553B')))
+                        fig_macd.update_layout(template="plotly_dark", height=300, margin=dict(l=0, r=0, t=10, b=0), showlegend=True, legend=dict(orientation="h", y=1.1))
+                        st.plotly_chart(fig_macd, use_container_width=True)
+
+            #3. DETAY TABLOSU
+            with st.expander(" Detaylı Veri Kayıtları"):
+                st.dataframe(df_chart.sort_values(by='processed_time', ascending=False).head(50), use_container_width=True)
+
+            time.sleep(1)
+
+            st.rerun()

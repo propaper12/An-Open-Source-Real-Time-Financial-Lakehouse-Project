@@ -15,15 +15,13 @@ TR_CHARS = {'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c',
 
 def clean_column_name(col_name):
     """Sütun isimlerini veritabanı dostu hale getirir"""
-    # 1. Türkçe karakterleri değiştir
     for tr, en in TR_CHARS.items():
         col_name = col_name.replace(tr, en)
-    # 2. Sadece harf, rakam ve alt çizgi kalsın, gerisini sil, boşlukları _ yap
     clean = re.sub(r'[^a-zA-Z0-9]', '_', col_name.strip())
     return clean.lower()
 
 def process_batch_file(filename):
-    print(f"📦 Dinamik Batch İşlemi: {filename}")
+    print(f" Dinamik Batch İşlemi: {filename}")
 
     spark = SparkSession.builder \
         .appName("UniversalBatchProcessor") \
@@ -37,30 +35,29 @@ def process_batch_file(filename):
     input_path = f"s3a://market-data/raw_batch_uploads/{filename}"
 
     try:
-        # 1. CSV'yi Oku (Otomatik Tip Tahmini ile)
+        # 1. CSV'yi Oku 
         df = spark.read.option("header", "true").option("inferSchema", "true").csv(input_path)
         
-        # 2. Sütun İsimlerini Temizle (Clean Columns)
-        # "Satış Miktarı (Adet)" -> "satis_miktari_adet"
+        # 2. Sütun İsimlerini Temizle 
+        # "Satış Miktarı (Adet)
         cleaned_columns = [clean_column_name(c) for c in df.columns]
         df_clean = df.toDF(*cleaned_columns)
 
-        # 3. Tablo İsmi Üret
-        # "Müşteri Listesi 2024.csv" -> "upload_musteri_listesi_2024"
+        # 3. Tablo İsmi Üretme
         clean_filename = clean_column_name(filename.split('.')[0])
         table_name = f"upload_{clean_filename}"
 
-        print(f"📊 Hedef Tablo Adı: {table_name}")
-        print(f"📝 Sütunlar: {cleaned_columns}")
+        print(f" Hedef Tablo Adı: {table_name}")
+        print(f" Sütunlar: {cleaned_columns}")
 
         # 4. Veriyi Kaydet (PostgreSQL + MinIO)
         
-        # A) MinIO (Parquet olarak yedekle)
+        # MinIO (Parquet olarak yedekle)
         minio_path = f"s3a://market-data/batch_processed/{table_name}"
         df_clean.write.format("parquet").mode("overwrite").save(minio_path)
-        print(f"✅ MinIO'ya yedeklendi: {minio_path}")
+        print(f" MinIO'ya yedeklendi: {minio_path}")
 
-        # B) PostgreSQL (Metabase için)
+        # PostgreSQL (Metabase için)
         jdbc_url = "jdbc:postgresql://postgres:5432/market_db"
         db_properties = {
             "user": "admin",
@@ -68,14 +65,14 @@ def process_batch_file(filename):
             "driver": "org.postgresql.Driver"
         }
         
-        # mode="overwrite" -> Eğer aynı isimde dosya daha önce yüklendiyse tabloyu silip yeniden oluşturur.
+        # mode="overwrite":Eğer aynı isimde dosya daha önce yüklendiyse tabloyu silip yeniden oluşturur.
         df_clean.write.jdbc(url=jdbc_url, table=table_name, mode="overwrite", properties=db_properties)
         
-        print(f"✅ PostgreSQL'e tablo olarak yazıldı: {table_name}")
-        print("🎉 İşlem Tamamlandı.")
+        print(f"PostgreSQL'e tablo olarak yazıldı: {table_name}")
+        print(" İşlem Tamamlandı.")
 
     except Exception as e:
-        print(f"❌ Hata oluştu: {e}")
+        print(f" Hata oluştu: {e}")
         sys.exit(1)
     finally:
         spark.stop()

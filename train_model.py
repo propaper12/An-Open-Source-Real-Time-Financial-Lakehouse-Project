@@ -89,7 +89,7 @@ try:
     target_symbols = []
     
     if target_arg != "ALL" and target_arg != "None":
-        print(f"🎯 Hedef Odaklı Eğitim Modu: Sadece {target_arg} için çalışılacak.")
+        print(f"Hedef Odaklı Eğitim Modu: Sadece {target_arg} için çalışılacak.")
         count = base_df.filter(col("symbol") == target_arg).count()
         if count > 10:
             target_symbols = [target_arg]
@@ -106,17 +106,15 @@ try:
         sys.exit(0)
 
     for symbol in target_symbols:
-        print(f"\n⚡ ANALİZ BAŞLIYOR: {symbol}")
+        print(f"\n ANALİZ BAŞLIYOR: {symbol}")
         
         raw_df = base_df.filter(col("symbol") == symbol)
         feature_df = create_smart_features(raw_df)
         
         input_cols = ["volatility", "lag_1", "lag_3", "ma_5", "ma_10", "momentum", "volatility_change"]
         
-        assembler = VectorAssembler(inputCols=input_cols, outputCol="features_raw")
-        scaler = StandardScaler(inputCol="features_raw", outputCol="features", withStd=True, withMean=False)
-        
-        pipeline_prep = Pipeline(stages=[assembler, scaler])
+        assembler = VectorAssembler(inputCols=input_cols, outputCol="features") 
+        pipeline_prep = Pipeline(stages=[assembler]) # Sadece assembler var
         model_prep = pipeline_prep.fit(feature_df)
         final_data = model_prep.transform(feature_df).select("features", col("average_price").alias("label"), "processed_time")
 
@@ -187,14 +185,14 @@ try:
                 mlflow.log_param("winner_algo", best_model_name)
                 mlflow.spark.log_model(best_model, "model")
             
-            print(f"   💾 Model Production ortamına taşındı: {save_path}")
+            print(f"Model Production ortamına taşındı: {save_path}")
 
         train_data.unpersist()
         test_data.unpersist()
         gc.collect()
 
 except Exception as e:
-    print(f"🚨 KRİTİK SİSTEM HATASI: {e}")
+    print(f" KRİTİK SİSTEM HATASI: {e}")
     import traceback
     traceback.print_exc()
 
