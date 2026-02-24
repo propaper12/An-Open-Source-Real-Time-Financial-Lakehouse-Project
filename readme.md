@@ -228,10 +228,6 @@ Paylaştığın **`ml_watcher.py`** kodu, projenin **"Otonom Karar Mekanizması"
 Docker konteynerlerini (Kafka, Spark, Airflow, Postgres, MinIO vb.) derler ve arka planda çalıştırır:
 Bash
 ```
-İlk önce .env ile dosya olusturun.
-.env
-```
-```
 docker-compose up -d --build
 ```
 ### 2. AI Modellerini Eğitme
