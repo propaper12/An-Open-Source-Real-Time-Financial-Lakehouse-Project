@@ -7,11 +7,12 @@ import docker
 from sqlalchemy import create_engine
 
 st.set_page_config(page_title="Canlı Piyasa", layout="wide", page_icon="📈")
-PG_HOST = os.getenv("POSTGRES_HOST", "postgres")
-PG_USER = os.getenv("POSTGRES_USER")
-PG_PASS = os.getenv("POSTGRES_PASSWORD")
-PG_DB = os.getenv("POSTGRES_DB", "market_db")
+PG_USER = "admin"
+PG_PASS = "admin"
+PG_HOST = "postgres"
+PG_DB = "market_db"
 
+# Bağlantı dizesini doğrudan oluşturuyoruz
 DB_URL = f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}:5432/{PG_DB}"
 st.markdown("""
 <style>
