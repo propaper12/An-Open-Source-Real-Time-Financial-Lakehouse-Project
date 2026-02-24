@@ -5,12 +5,13 @@ from pyspark.sql.functions import col
 
 # Ayarlar
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
+ACCESS_KEY = os.getenv("MINIO_ROOT_USER")
+SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD")
 SILVER_PATH = "s3a://market-data/silver_layer_delta"
 
 print("🛡️ DATA QUALITY GATE (Offline Mod) Başlatılıyor...")
 
-# Spark Session - Yerel JAR'ları kullanacak şekilde ayarlandı
-# Bu sayede her açılışta 200MB indirme yapmaz, saniyesinde açılır.
+# Spark Session - Şifreler dinamik hale getirildi
 spark = SparkSession.builder \
     .appName("Quality_Guard") \
     .config("spark.jars", 
@@ -23,8 +24,8 @@ spark = SparkSession.builder \
     .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
     .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
     .config("spark.hadoop.fs.s3a.endpoint", MINIO_ENDPOINT) \
-    .config("spark.hadoop.fs.s3a.access.key", "admin") \
-    .config("spark.hadoop.fs.s3a.secret.key", "admin12345") \
+    .config("spark.hadoop.fs.s3a.access.key", ACCESS_KEY) \
+    .config("spark.hadoop.fs.s3a.secret.key", SECRET_KEY) \
     .config("spark.hadoop.fs.s3a.path.style.access", "true") \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
     .master("local[*]") \

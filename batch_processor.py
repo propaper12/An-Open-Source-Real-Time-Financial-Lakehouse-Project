@@ -1,13 +1,19 @@
+# batch_processor.py
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 import os
 import sys
 import re
 
-# --- AYARLAR ---
+# --- AYARLAR (.env'den dinamik olarak çekilir) ---
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
-ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin")
-SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "admin12345")
+ACCESS_KEY = os.getenv("MINIO_ROOT_USER")
+SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD")
+
+PG_HOST = os.getenv("POSTGRES_HOST", "postgres")
+PG_DB = os.getenv("POSTGRES_DB", "market_db")
+PG_USER = os.getenv("POSTGRES_USER")
+PG_PASS = os.getenv("POSTGRES_PASSWORD")
 
 # Türkçe karakter düzeltme haritası
 TR_CHARS = {'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c', 
@@ -39,7 +45,6 @@ def process_batch_file(filename):
         df = spark.read.option("header", "true").option("inferSchema", "true").csv(input_path)
         
         # 2. Sütun İsimlerini Temizle 
-        # "Satış Miktarı (Adet)
         cleaned_columns = [clean_column_name(c) for c in df.columns]
         df_clean = df.toDF(*cleaned_columns)
 
@@ -48,8 +53,7 @@ def process_batch_file(filename):
         table_name = f"upload_{clean_filename}"
 
         print(f" Hedef Tablo Adı: {table_name}")
-        print(f" Sütunlar: {cleaned_columns}")
-
+        
         # 4. Veriyi Kaydet (PostgreSQL + MinIO)
         
         # MinIO (Parquet olarak yedekle)
@@ -57,15 +61,14 @@ def process_batch_file(filename):
         df_clean.write.format("parquet").mode("overwrite").save(minio_path)
         print(f" MinIO'ya yedeklendi: {minio_path}")
 
-        # PostgreSQL (Metabase için)
-        jdbc_url = "jdbc:postgresql://postgres:5432/market_db"
+        # PostgreSQL (Metabase için) - Şifreler Dinamik!
+        jdbc_url = f"jdbc:postgresql://{PG_HOST}:5432/{PG_DB}"
         db_properties = {
-            "user": "admin",
-            "password": "admin",
+            "user": PG_USER,
+            "password": PG_PASS,
             "driver": "org.postgresql.Driver"
         }
         
-        # mode="overwrite":Eğer aynı isimde dosya daha önce yüklendiyse tabloyu silip yeniden oluşturur.
         df_clean.write.jdbc(url=jdbc_url, table=table_name, mode="overwrite", properties=db_properties)
         
         print(f"PostgreSQL'e tablo olarak yazıldı: {table_name}")

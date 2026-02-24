@@ -15,12 +15,22 @@ print("="*50 + "\n")
 
 time.sleep(5)
 
+# process_silver.py - (En üstteki ayar kısmını şu şekilde güncelle)
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092')
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
-ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin")
-SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "admin12345")
+ACCESS_KEY = os.getenv("MINIO_ROOT_USER")
+SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD")
 BASE_MODEL_PATH = "s3a://market-data/models/"
 
+# Postgres ayarlarını dinamik yapıyoruz
+PG_HOST = os.getenv("POSTGRES_HOST", "postgres")
+PG_DB = os.getenv("POSTGRES_DB", "market_db")
+PG_URL = f"jdbc:postgresql://{PG_HOST}:5432/{PG_DB}"
+PG_PROPERTIES = {
+    "user": os.getenv("POSTGRES_USER"), 
+    "password": os.getenv("POSTGRES_PASSWORD"), 
+    "driver": "org.postgresql.Driver"
+}
 # JAR Ayarları
 jar_dir = "/opt/spark-jars"
 jar_list = [

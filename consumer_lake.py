@@ -7,11 +7,12 @@ from pyspark.sql.functions import col, current_timestamp
 
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
-ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin")
-SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "admin12345")
+ACCESS_KEY = os.getenv("MINIO_ROOT_USER")
+SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD")
 
 print(f"[CONSUMER] Generic Raw Data Ingestion Başlatılıyor...")
 
+# Spark Session kısmı:
 spark = SparkSession.builder \
     .appName("GenericBronzeIngestion") \
     .config("spark.jars.packages", 

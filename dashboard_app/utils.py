@@ -5,18 +5,17 @@ import pandas as pd
 import mlflow
 import os
 
-# --- 1. KONFİGÜRASYON VE GÜVENLİK ---
-# Şifreleri ve adresleri kodun içine gömmek yerine (hardcoded), ortam değişkenlerinden çekiyorum.
-# Bu sayede proje Docker'da da çalışsa, Local'de de çalışsa ayar değiştirmeme gerek kalmıyor.
-MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
-MINIO_URL = os.getenv("MINIO_URL", "http://minio:9000")
-ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin")
-SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "admin12345")
-BUCKET_NAME = "market-data"
+MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow_server:5000")
+MINIO_URL = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
+# Şifreleri doğrudan os.getenv ile çekiyoruz, yanına "admin" yazmıyoruz!
+ACCESS_KEY = os.getenv("MINIO_ROOT_USER")
+SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD")
+BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "market-data")
+
 PG_HOST = os.getenv("POSTGRES_HOST", "postgres")
 PG_DB = os.getenv("POSTGRES_DB", "market_db")
-PG_USER = os.getenv("POSTGRES_USER", "admin")
-PG_PASS = os.getenv("POSTGRES_PASSWORD", "admin")
+PG_USER = os.getenv("POSTGRES_USER")
+PG_PASS = os.getenv("POSTGRES_PASSWORD")
 
 # --- 2. GÖRSEL TASARIM (KURUMSAL KİMLİK) ---
 def inject_custom_css():

@@ -6,7 +6,7 @@ import pandas as pd
 import threading
 from kafka import KafkaConsumer, KafkaProducer
 from datetime import datetime
-
+import os 
 # Sayfa Ayarları
 st.set_page_config(page_title="Universal Data Deck", page_icon="🎛️", layout="wide")
 
@@ -14,8 +14,8 @@ st.title("🎛️ Universal Data Ingestion Deck")
 st.markdown("---")
 
 # Kafka Ayarları
-KAFKA_SERVER = 'kafka:9092'
-TOPIC_NAME = 'market_data'
+KAFKA_SERVER = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+TOPIC_NAME = os.getenv("KAFKA_TOPIC_MARKET", "market_data")
 
 # --- SESSION STATE (Hafıza Yönetimi) ---
 if 'iot_active' not in st.session_state:
