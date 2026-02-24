@@ -7,11 +7,12 @@ import docker
 from sqlalchemy import create_engine
 
 st.set_page_config(page_title="Canlı Piyasa", layout="wide", page_icon="📈")
-PG_USER = "admin"
-PG_PASS = "admin"
+# --- BURAYI GÜNCELLİYORSUN ---
+PG_USER = "admin_lakehouse"
+PG_PASS = "SuperSecret_DB_Password_2026"
 PG_HOST = "postgres"
 PG_DB = "market_db"
-
+# -----------------------------
 # Bağlantı dizesini doğrudan oluşturuyoruz
 DB_URL = f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}:5432/{PG_DB}"
 st.markdown("""
