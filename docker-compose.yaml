@@ -372,7 +372,11 @@ services:
       resources:
         limits:
           memory: 256m
-
+  adminer:
+    image: adminer
+    container_name: db_admin
+    ports: [ "8080:8080" ]
+    networks: [ data-network ]
   # 20. OTOMATİK VERİTABANI KURUCU (DB-INIT)
   db-init:
     image: postgres:15
