@@ -53,7 +53,9 @@ services:
 
   # 4. PRODUCER (BINANCE DATA)
   producer:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     container_name: binance_producer
     restart: always
     depends_on: [kafka]
@@ -68,7 +70,9 @@ services:
 
   # 5. SPARK CONSUMER (BRONZE LAYER)
   spark-consumer:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     container_name: spark-consumer
     command: python consumer_lake.py
     restart: always 
@@ -88,7 +92,9 @@ services:
 
   # 6. SPARK SILVER (PROCESSING LAYER)
   spark-silver:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     container_name: spark-silver
     restart: always
     depends_on: [minio, spark-consumer]
@@ -111,7 +117,9 @@ services:
 
   # 7. ML TRAINER (AUTO-ML ORCHESTRATOR)
   ml-trainer:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     container_name: ml-trainer
     restart: always
     depends_on: [spark-silver]
@@ -129,7 +137,9 @@ services:
 
   # 8. DASHBOARD (STREAMLIT UI)
   dashboard:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
     container_name: dashboard
     command: streamlit run dashboard_app/Home.py --server.port 8501 --server.address 0.0.0.0
     ports:
@@ -151,9 +161,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./dashboard_app:/app/dashboard_app
       
-  # 9. POSTGRES (SERVING DB)
+  # 9. TIMESCALEDB (Gelişmiş Time-Series PostgreSQL)
   postgres:
-    image: postgres:15
+    image: timescale/timescaledb-ha:pg15
     container_name: postgres
     env_file: 
       - .env
@@ -166,7 +176,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # 10. DBT
+  # 10. DBT (Batch İşlemler İçin)
   dbt:
     build: ./dbt_project
     container_name: dbt_transformer
@@ -187,7 +197,9 @@ services:
 
   # 11. API GATEWAY
   api-gateway:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     container_name: api_gateway
     command: uvicorn ingestion_api:app --host 0.0.0.0 --port 8000
     ports:
@@ -281,79 +293,29 @@ services:
           memory: 512m
 
   # 16. METABASE
-  metabase:
-    image: metabase/metabase:latest
-    container_name: metabase
-    ports:
-      - "3005:3000"
-    env_file: 
-      - .env
-    networks:
-      - data-network
-    restart: always
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-  
-  # 17. KAFKA CONNECT
-  kafka-connect:
-    build:
-      context: .
-      dockerfile: Dockerfile.connect
-    container_name: kafka-connect
-    ports:
-      - "8083:8083"
-    depends_on:
-      - kafka
-      - zookeeper
-    environment:
-      CONNECT_BOOTSTRAP_SERVERS: "kafka:9092"
-      CONNECT_REST_PORT: 8083
-      CONNECT_GROUP_ID: "compose-connect-group"
-      CONNECT_CONFIG_STORAGE_TOPIC: "docker-connect-configs"
-      CONNECT_OFFSET_STORAGE_TOPIC: "docker-connect-offsets"
-      CONNECT_STATUS_STORAGE_TOPIC: "docker-connect-status"
-      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "1"
-      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
-      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
-      CONNECT_LISTENERS: "HTTP://0.0.0.0:8083"
-      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
-      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
-      CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
-      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
-      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
-      KAFKA_HEAP_OPTS: "-Xms256M -Xmx512M"
-    networks:
-      - data-network
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-   
-  # 18. KAFKA CONNECT UI
-  kafka-connect-ui:
-    image: landoop/kafka-connect-ui:0.9.7
-    container_name: kafka-connect-ui
-    ports:
-      - "8003:8000"
-    environment:
-      - "CONNECT_URL=http://kafka-connect:8083"
-      - "PROXY=true"
-    depends_on:
-      - kafka-connect
-    networks:
-      - data-network
-    deploy:
-      resources:
-        limits:
-          memory: 128m
+  #metabase:
+   # image: metabase/metabase:latest
+    #container_name: metabase
+    #ports:
+     # - "3005:3000"
+    #env_file: 
+     # - .env
+    #networks:
+     # - data-network
+    #restart: always
+    #deploy:
+     # resources:
+      #  limits:
+       #   memory: 1g
 
-  # 19. KAFDROP (Kafka UI)
+  # 17. ADMINER (Sadece Local Test İçin)
+  adminer:
+    image: adminer
+    container_name: db_admin
+    ports: [ "8080:8080" ]
+    networks: [ data-network ]
+
+  # 18. KAFDROP (Kafka UI)
   kafdrop:
     image: obsidiandynamics/kafdrop
     container_name: kafdrop
@@ -372,12 +334,8 @@ services:
       resources:
         limits:
           memory: 256m
-  adminer:
-    image: adminer
-    container_name: db_admin
-    ports: [ "8080:8080" ]
-    networks: [ data-network ]
-  # 20. OTOMATİK VERİTABANI KURUCU (DB-INIT)
+
+  # 19. OTOMATİK VERİTABANI KURUCU (DB-INIT)
   db-init:
     image: postgres:15
     container_name: db_init
@@ -390,7 +348,7 @@ services:
     command: >
       sh -c "
       echo 'Postgres bekleniyor...';
-      sleep 10;
+      sleep 15;
       psql -h postgres -U admin_lakehouse -d market_db -c '
       CREATE TABLE IF NOT EXISTS market_data (
           symbol VARCHAR(20),
@@ -398,7 +356,11 @@ services:
           predicted_price DOUBLE PRECISION,
           volatility DOUBLE PRECISION,
           processed_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );' && echo 'Tablo basariyla kuruldu!';
+      );
+      -- Eğer eklenti kuruluysa ve hypertable oluşturulmadıysa oluştur.
+      CREATE EXTENSION IF NOT EXISTS timescaledb;
+      SELECT create_hypertable(''market_data'', ''processed_time'', if_not_exists => TRUE);
+      ' && echo 'Tablo ve Hypertable basariyla kuruldu!';
       "
     deploy:
       resources:

@@ -1,0 +1,32 @@
+FROM python:3.9-slim
+
+# Mimari şemalar (Graphviz) için sistem gereksinimi
+RUN apt-get update && \
+    apt-get install -y graphviz && \
+    apt-get clean;
+
+WORKDIR /app
+
+# UI, Görselleştirme, DB ve Sistem izleme bağımlılıkları (Eksiksiz)
+RUN pip install --no-cache-dir \
+    streamlit \
+    pandas \
+    numpy \
+    matplotlib \
+    seaborn \
+    plotly \
+    psycopg2-binary \
+    sqlalchemy \
+    s3fs \
+    boto3 \
+    minio \
+    mlflow \
+    docker \
+    psutil \
+    watchdog \
+    python-dotenv\
+    kafka-python
+
+COPY . /app/
+
+CMD ["streamlit", "run", "dashboard_app/Home.py", "--server.port", "8501", "--server.address", "0.0.0.0"]

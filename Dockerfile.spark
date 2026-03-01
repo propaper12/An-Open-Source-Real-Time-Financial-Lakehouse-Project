@@ -1,0 +1,42 @@
+FROM python:3.9-bullseye
+
+# 1. Java ve Temel Sistem Kütüphaneleri (Sadece Spark İçin)
+RUN apt-get update && \
+    apt-get install -y openjdk-11-jre-headless wget curl procps && \
+    apt-get clean;
+
+# 2. Sadece Veri İşleme, Streaming ve ML Bağımlılıkları
+RUN pip install --no-cache-dir \
+    pyspark==3.4.1 \
+    delta-spark==2.4.0 \
+    deltalake \
+    numpy \
+    pandas \
+    kafka-python \
+    websocket-client \
+    boto3 \
+    minio \
+    psycopg2-binary \
+    mlflow \
+    scikit-learn \
+    python-dotenv
+
+# 3. JAR DOSYALARI (Kafka, S3, Delta ve Postgres Bağlantıları)
+RUN mkdir -p /opt/spark-jars
+WORKDIR /opt/spark-jars
+
+RUN wget --no-check-certificate https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.500/aws-java-sdk-bundle-1.12.500.jar && \
+    wget --no-check-certificate https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar && \
+    wget --no-check-certificate https://repo1.maven.org/maven2/io/delta/delta-core_2.12/2.4.0/delta-core_2.12-2.4.0.jar && \
+    wget --no-check-certificate https://repo1.maven.org/maven2/io/delta/delta-storage/2.4.0/delta-storage-2.4.0.jar && \
+    wget --no-check-certificate https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.4.1/spark-sql-kafka-0-10_2.12-3.4.1.jar && \
+    wget --no-check-certificate https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.12/3.4.1/spark-token-provider-kafka-0-10_2.12-3.4.1.jar && \
+    wget --no-check-certificate https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.4.0/kafka-clients-3.4.0.jar && \
+    wget --no-check-certificate https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/2.11.1/commons-pool2-2.11.1.jar && \
+    wget --no-check-certificate https://repo1.maven.org/maven2/org/postgresql/postgresql/42.6.0/postgresql-42.6.0.jar
+
+WORKDIR /app
+# Tüm kodları alıyoruz, docker-compose hangi scriptin çalışacağına karar verecek
+COPY . /app/
+
+CMD ["tail", "-f", "/dev/null"]
