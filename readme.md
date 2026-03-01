@@ -17,21 +17,21 @@
 </div>
 
 
-# Enterprise Real-Time Lakehouse & MLOps Platform
+# Scalable Near Real-Time Lakehouse & Event-Driven MLOps Architecture
 
-**Özetle Nedir?** Bu proje; verinin üretildiği andan itibaren yakalanıp işlendiği, güvenli bir şekilde depolandığı, yapay zeka algoritmalarından geçirilerek gelecek tahminlerinin üretildiği ve tüm bu sürecin **sadece 5 saniye içerisinde** tamamlanıp ekranlara yansıtıldığı **uçtan uca (End-to-End) bir Veri Mühendisliği ve MLOps ekosistemidir.**
+**Özetle Nedir?** Bu proje, yüksek hacimli veri akışlarını (streaming) yakalayan, işleyen ve Delta Lake üzerinde şema-bağımsız (schema-agnostic) olarak depolayan uçtan uca bir veri mühendisliği PoC (Proof of Concept) çalışmasıdır. Sistem, Spark Structured Streaming kullanarak ~5 saniyelik mikro-batch (micro-batch) aralıklarıyla veriyi işlerken, aynı zamanda arka planda event-driven bir AutoML pipeline'ı tetikleyerek sürekli öğrenme (continuous training) senaryolarını simüle eder.**
 
 Geleneksel veri projelerinin aksine statik bir yapıya sahip değildir. Sistem; sürekli akan veriyi dinler, yeterli veri biriktiğinde makine öğrenmesi modellerini kendi kendine eğitir (AutoML), veri kalitesini denetler (Data Quality Gate) ve altyapı sağlığını 7/24 izler.
 
 ### 🌟 Sistemin Öne Çıkan Özellikleri:
 
--   **⚡ Gerçek Zamanlı Akış (Low Latency):** Verinin Binance WebSocket veya API'lerden alınıp, Spark ile işlenmesi, ML modellerinden geçirilmesi ve TimescaleDB üzerinden Streamlit dashboard'a düşmesi arasındaki toplam gecikme süresi (End-to-End Latency) ortalama 5 saniyedir.
+-   **⚡ Near Real-Time (NRT) Processing: Spark Structured Streaming ile uçtan uca veri işleme gecikmesi (latency) mikro-batch pencereleri optimize edilerek ~5 saniye seviyesinde tutulmuştur.
     
 -   **🧬 Şema Bağımsız (Schema Agnostic) Veri Kabulü:** Sistem "Hardcoded" (sabit şemalı) değildir. Sadece kripto para verilerini değil; **Endüstriyel IoT Sensörleri, Sunucu Logları (CPU/RAM) veya Web Trafiği** gibi her türlü JSON verisini dinamik olarak tanır, işler ve Data Lake üzerinde kaynağına göre bölümlendirerek (Partitioned) arşivler.
     
--   **🧠 Otonom Yapay Zeka (Self-Training ML):** Sistemin başında bir veri bilimcinin durmasına gerek yoktur. "ML Watcher" modülü veri havuzunun doluluğunu izler, yeterli veriye ulaşıldığında Apache Spark MLlib üzerindeki 4 farklı algoritmayı (RandomForest, ElasticNet, DecisionTree, GBT) birbirleriyle yarıştırır ve en başarılı (Şampiyon) modeli otomatik olarak canlıya alır.
+-   **🧠 Event-Driven AutoML (Shadow Mode): Veri gölünde (Data Lake) belirlenen hacme ulaşıldığında model eğitim süreçleri otomatik tetiklenir. Modeller MLflow Registry'de versiyonlanır. (Not: Üretim ortamındaki "Concept Drift" risklerine karşı tam otonom canlıya alım yerine, bir "Human-in-the-loop" veya "Shadow Mode" mantığı gözetilerek tasarlanmıştır.)
     
--   **🐳 %100 İzole ve Ölçeklenebilir Mimari:** Sistem, birbirine tam entegre çalışan tam **17 farklı mikroservisten** oluşmaktadır. Tüm ortam Dockerize edilmiş olup tek bir komutla (`docker-compose up`) herhangi bir işletim sisteminde ayağa kalkabilir.
+-   **🐳 Containerized & Decoupled Architecture: Tüm bileşenler Docker Compose ile izole edilmiştir. Veri üreten, işleyen ve sunan katmanlar birbirinden bağımsızdır (Kubernetes deployment'a hazır mantıksal ayrım).
 <img width="2816" height="1504" alt="Gemini_Generated_Image_hn82lvhn82lvhn82" src="https://github.com/user-attachments/assets/3e4de52a-f56d-4885-b7f2-d8e7ee86cb03" />
 
 
