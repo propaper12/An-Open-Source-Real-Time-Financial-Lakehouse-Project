@@ -19,69 +19,67 @@ PG_PASS = os.getenv("POSTGRES_PASSWORD")
 
 # --- 2. GÖRSEL TASARIM (KURUMSAL KİMLİK) ---
 def inject_custom_css():
-    """
-    Standart Streamlit arayüzü çok basit kaldığı için, DataRobot/B2Metric tarzı
-    profesyonel bir 'Dark Mode' (Karanlık Tema) tasarladım.
-    Burada CSS ile arayüzün renklerini, kart yapılarını ve fontlarını manipüle ediyorum.
-    """
     st.markdown("""
     <style>
-        /* --- RENK PALETİ (SİYAH & YEŞİL VURGULU) --- */
-        :root {
-            --bg-color: #0E1117;       /* Göz yormayan mat siyah arka plan */
-            --card-color: #262730;     /* Kartlar için koyu gri */
-            --border-color: #41444C;   /* İnce gri çerçeveler */
-            --accent-color: #FF4B4B;   /* Streamlit kırmızısı (Vurgular için) */
-            --text-color: #FAFAFA;     /* Okunabilir beyaz metin */
-            --success-color: #00CC96;  /* Başarılı durumlar için yeşil */
-        }
-        
-        /* Sayfanın genel arka planını değiştiriyorum */
-        .stApp {
-            background-color: var(--bg-color);
-        }
-        
-        /* Sol menüyü (Sidebar) tamamen siyah yapıp ayrıştırıyorum */
-        [data-testid="stSidebar"] {
-            background-color: #000000; 
-            border-right: 1px solid var(--border-color);
+        /* Binance-Style Dark Theme */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        html, body, [data-testid="stAppViewContainer"] {
+            background-color: #0b0e11; /* Binance Dark BG */
+            font-family: 'Inter', sans-serif;
+            color: #eaecef;
         }
 
-        /* Grafikleri ve metrikleri içine koyduğum 'Kart' yapısı */
-        [data-testid="stContainer"] {
-            background-color: var(--card-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 15px;
+        /* Hero Section Gradient */
+        .hero-section {
+            background: linear-gradient(90deg, #1e2329 0%, #0b0e11 100%);
+            padding: 40px;
+            border-radius: 15px;
+            border-left: 5px solid #fcd535; /* Binance Yellow */
+            margin-bottom: 25px;
         }
-        
-        /* Metriklerin daha şık görünmesi için renk ayarları */
-        .stMetricLabel { color: #B0B3B8 !important; }
-        .stMetricValue { color: var(--text-color) !important; }
-        
-        /* Tablo kenarlıklarını temaya uyduruyorum */
-        [data-testid="stDataFrame"] { border: 1px solid var(--border-color); }
-        
-        /* Başlıkların her zaman beyaz kalmasını sağlıyorum */
-        h1, h2, h3 { color: var(--text-color) !important; }
-        
-        /* Butonlara hover (üzerine gelince) efekti ekledim */
-        .stButton button {
-            background-color: #31333F;
-            color: white;
-            border: 1px solid var(--border-color);
+
+        /* Servis Kartları (Modern & Hover Efektli) */
+        [data-testid="stMetric"] {
+            background-color: #1e2329;
+            border: 1px solid #2b3139;
+            border-radius: 10px;
+            padding: 15px !important;
             transition: all 0.3s ease;
         }
-        .stButton button:hover {
-            border-color: var(--accent-color);
-            color: var(--accent-color);
+        [data-testid="stMetric"]:hover {
+            border-color: #fcd535;
+            transform: translateY(-5px);
         }
-        
-        a { color: var(--accent-color) !important; }
 
+        /* Kart Konteynerları */
+        div[data-testid="stVerticalBlock"] > div[style*="border: 1px solid"] {
+            background-color: #181a20 !important;
+            border: 1px solid #2b3139 !important;
+            border-radius: 12px !important;
+        }
+
+        /* Butonlar */
+        .stButton button {
+            background-color: #fcd535 !important;
+            color: #0b0e11 !important;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            text-transform: uppercase;
+        }
+        .stButton button:hover {
+            background-color: #d4b12d !important;
+            box-shadow: 0px 4px 15px rgba(252, 213, 53, 0.3);
+        }
+
+        /* Başlıklar */
+        h1, h2, h3 { color: #fcd535 !important; font-weight: 800 !important; }
+        
+        /* Sidebar */
+        [data-testid="stSidebar"] { background-color: #181a20; }
     </style>
     """, unsafe_allow_html=True)
-
 # --- 3. MLFLOW BAĞLANTISI (AKILLI BAĞLANTI) ---
 def init_mlflow():
     """

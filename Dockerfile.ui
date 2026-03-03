@@ -26,7 +26,8 @@ RUN pip install --no-cache-dir \
     watchdog \
     python-dotenv\
     kafka-python\
-    deltalake
+    deltalake\
+    graphviz
 
 COPY . /app/
 

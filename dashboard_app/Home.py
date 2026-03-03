@@ -1,149 +1,191 @@
 import streamlit as st
-import socket
-from utils import inject_custom_css
+import s3fs
+import psycopg2
+import pandas as pd
+import mlflow
+import os
+import time
+from datetime import datetime
+import graphviz
 
-# SAYFA AYARLARI
-st.set_page_config(
-    page_title="Financial Lakehouse HQ", 
-    layout="wide",
-    page_icon="🧠"
-)
+# --- 1. ENV CONFIG ---
+MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow_server:5000")
+MINIO_URL = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
+ACCESS_KEY = os.getenv("MINIO_ROOT_USER")
+SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD")
+BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "market-data")
 
-# CSS ENJEKSİYONU
-inject_custom_css()
+PG_HOST = os.getenv("POSTGRES_HOST", "postgres")
+PG_DB = os.getenv("POSTGRES_DB", "market_db")
+PG_USER = os.getenv("POSTGRES_USER")
+PG_PASS = os.getenv("POSTGRES_PASSWORD")
 
-#HEADER
-c1, c2 = st.columns([0.8, 0.2])
-with c1:
-    st.title("Financial Lakehouse HQ")
+# --- 2. PROFESYONEL BINANCE TERMİNAL CSS ---
+def inject_custom_css():
     st.markdown("""
-    **Enterprise Data Pipeline Komuta Merkezi.** Uçtan uca veri akışını yönetin, mikroservisleri izleyin ve yapay zeka modellerini eğitin.
-    """)
-with c2:
-    st.image("https://cdn-icons-png.flaticon.com/512/9676/9676527.png", width=80)
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
 
-st.divider()
+        .stApp { background-color: #0b0e11; font-family: 'Inter', sans-serif; color: #eaecef; }
 
-#BÖLÜM 1: SİSTEM MİMARİSİ
-st.subheader("📡 Canlı Sistem Mimarisi")
+        .hero-banner {
+            background: linear-gradient(135deg, #1e2329 0%, #0b0e11 100%);
+            padding: 40px; border-radius: 20px; border-left: 8px solid #fcd535;
+            margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
 
-architecture_code = """
-digraph G {
-    rankdir=LR;
-    bgcolor="transparent"; 
+        .status-card {
+            background-color: #1e2329; border: 1px solid #2b3139; border-radius: 12px;
+            padding: 20px; text-align: center; transition: 0.3s;
+        }
+        .status-card:hover { border-color: #fcd535; transform: translateY(-5px); }
+
+        .led-green { color: #0ecb81; font-weight: bold; }
+        .led-red { color: #f6465d; font-weight: bold; }
+
+        h1, h2, h3 { color: #fcd535 !important; font-weight: 800 !important; letter-spacing: -1px; }
+        
+        .stButton button {
+            background-color: #fcd535 !important; color: #0b0e11 !important;
+            border-radius: 8px !important; font-weight: 800 !important;
+            text-transform: uppercase; padding: 10px 25px !important; width: 100%;
+        }
+
+        .arch-container {
+            background-color: #181a20; padding: 30px; border-radius: 20px;
+            border: 1px solid #2b3139; margin: 20px 0;
+        }
+
+        [data-testid="stSidebar"] { background-color: #181a20; border-right: 1px solid #2b3139; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 3. TEKNİK BAĞLANTI KONTROLLERİ ---
+@st.cache_resource
+def check_connections():
+    status = {"Postgres": False, "MinIO": False, "MLflow": False}
+    try:
+        conn = psycopg2.connect(host=PG_HOST, database=PG_DB, user=PG_USER, password=PG_PASS, port="5432", connect_timeout=1)
+        status["Postgres"] = True
+        conn.close()
+    except: pass
+    try:
+        fs = s3fs.S3FileSystem(key=ACCESS_KEY, secret=SECRET_KEY, client_kwargs={'endpoint_url': MINIO_URL})
+        fs.ls(BUCKET_NAME)
+        status["MinIO"] = True
+    except: pass
+    try:
+        mlflow.set_tracking_uri(MLFLOW_URI)
+        mlflow.tracking.MlflowClient().search_experiments()
+        status["MLflow"] = True
+    except: pass
+    return status
+
+# --- 4. MİMARİ ŞEMA OLUŞTURUCU (Graphviz) ---
+def show_architecture():
+    dot = graphviz.Digraph()
+    dot.attr(bgcolor='#181a20', color='white', fontname='Inter')
+    dot.attr('node', shape='box', style='filled', fontname='Inter', fontcolor='white', color='#2b3139')
     
-    node [shape=box, style="filled,rounded", fontname="Arial", fontsize=10, margin=0.2, fontcolor="white"];
-    edge [color="#555555", arrowsize=0.8, fontsize=10, fontcolor="white"];
+    # Layer 1: Ingestion
+    dot.node('Binance', 'Binance WS\n(Data Source)', fillcolor='#fcd535', fontcolor='black')
+    dot.node('Producer', 'Kafka Producer\n(Python)', fillcolor='#474d57')
+    dot.node('Kafka', 'Kafka Cluster\n(Message Bus)', fillcolor='#474d57')
 
-    subgraph cluster_source {
-        label = "Ingestion Layer"; style=dashed; color="#ff9900"; fontcolor="#ff9900"; bgcolor="#1E2127";
-        Binance [label="Binance API", fillcolor="#FCD535", fontcolor="black"]; 
-        Producer [label="Producer\n(Python)", fillcolor="#333333", color="#ff9900"];
-    }
-    subgraph cluster_streaming {
-        label = "Streaming Layer"; style=dashed; color="#00ADB5"; fontcolor="#00ADB5"; bgcolor="#1E2127";
-        Kafka [label="Apache Kafka\nCluster", fillcolor="#00ADB5", fontcolor="black"];
-    }
-    subgraph cluster_processing {
-        label = "Processing & AI"; style=dashed; color="#ff3300"; fontcolor="#ff3300"; bgcolor="#1E2127";
-        Spark [label="Spark Streaming", fillcolor="#ff5733"]; 
-        ML_Trainer [label="AutoML Bot", fillcolor="#C13584"];
-    }
-    subgraph cluster_storage {
-        label = "Lakehouse Storage"; style=dashed; color="#3366cc"; fontcolor="#3366cc"; bgcolor="#1E2127";
-        MinIO [label="MinIO\n(Delta Lake)", fillcolor="#3366cc"]; 
-        Postgres [label="PostgreSQL\n(Serving)", fillcolor="#2a4561"];
-    }
-    subgraph cluster_serving {
-        label = "User Interface"; style=dashed; color="#009933"; fontcolor="#009933"; bgcolor="#1E2127";
-        Streamlit [label="Dashboard app", fillcolor="#009933"]; 
-        MLflow [label="MLflow Registry", fillcolor="#0099cc"];
-    }
+    # Layer 2: Processing
+    dot.node('SparkSpeed', 'Spark Streaming\n(Speed Layer)', fillcolor='#0052cc')
+    dot.node('SparkBatch', 'Batch Processor\n(Rust/Python)', fillcolor='#0052cc')
 
-    Binance -> Producer; Producer -> Kafka; Kafka -> Spark;
-    Spark -> MinIO [color="#00ADB5"]; Spark -> Postgres; 
-    MinIO -> ML_Trainer; ML_Trainer -> MLflow; 
-    ML_Trainer -> MinIO; Postgres -> Streamlit [color="#00ADB5", penwidth=2]; 
-    Spark -> MLflow;
-}
-"""
-try:
-    st.graphviz_chart(architecture_code, use_container_width=True)
-except:
-    st.warning("Mimari şema yüklenemedi. Graphviz kurulu olmayabilir.")
+    # Layer 3: Storage
+    dot.node('MinIO', 'MinIO (S3)\n(Delta Lakehouse)', fillcolor='#0ecb81')
+    dot.node('Postgres', 'TimescaleDB\n(Serving DB)', fillcolor='#0ecb81')
 
-st.divider()
+    # Layer 4: ML & App
+    dot.node('MLflow', 'MLflow\n(Model Registry)', fillcolor='#9b59b6')
+    dot.node('Inference', 'FastAPI\n(Inference MaaS)', fillcolor='#9b59b6')
+    dot.node('UI', 'Streamlit Terminal\n(Serving Layer)', fillcolor='#f6465d')
 
-#BÖLÜM 2: SERVİS ERİŞİM NOKTALARI
-st.subheader("🛠️ Servis Erişim Noktaları")
-st.markdown("Mikroservis yönetim panellerine güvenli erişim sağlayın.")
+    # Bağlantılar
+    dot.edge('Binance', 'Producer')
+    dot.edge('Producer', 'Kafka')
+    dot.edge('Kafka', 'SparkSpeed')
+    dot.edge('SparkSpeed', 'Inference', label='Predict Request')
+    dot.edge('Inference', 'SparkSpeed', label='Response')
+    dot.edge('SparkSpeed', 'Postgres', label='Real-time Write')
+    dot.edge('SparkSpeed', 'MinIO', label='Silver Write')
+    dot.edge('SparkBatch', 'MinIO', label='Historical Load')
+    dot.edge('MinIO', 'MLflow', label='Training Data')
+    dot.edge('MLflow', 'Inference', label='Model Load')
+    dot.edge('Postgres', 'UI', label='Slow Path Query')
+    dot.edge('Kafka', 'UI', label='Fast Path Tick')
 
-services = [
-    {
-        "icon": "🧪", "name": "MLflow Tracking", 
-        "url": "http://localhost:5000", 
-        "user": "-", "pass": "-", 
-        "desc": "Model deneylerini ve metrikleri takip edin."
-    },
-    {
-        "icon": "🗄️", "name": "MinIO Console", 
-        "url": "http://localhost:9001", 
-        "user": "admin", "pass": "admin12345", 
-        "desc": "Object Storage (S3) bucket yönetimi."
-    },
-    {
-        "icon": "📊", "name": "Metabase BI", 
-        "url": "http://localhost:3005", 
-        "user": "Setup", "pass": "-", 
-        "desc": "Gelişmiş İş Zekası ve SQL raporlama."
-    },
-    {
-        "icon": "📈", "name": "Grafana Monitor", 
-        "url": "http://localhost:3001", 
-        "user": "admin", "pass": "admin", 
-        "desc": "CPU, RAM ve Docker log izleme."
-    },
-    {
-        "icon": "⚡", "name": "FastAPI Docs", 
-        "url": "http://localhost:8000/docs", 
-        "user": "-", "pass": "-", 
-        "desc": "Backend API Swagger dokümantasyonu."
-    },
-    {
-        "icon": "🐳", "name": "CAdvisor", 
-        "url": "http://localhost:8090/containers/", 
-        "user": "-", "pass": "-", 
-        "desc": "Konteyner performans metrikleri."
-    }
-]
+    st.graphviz_chart(dot)
 
-# Kartları 3'lü kolon düzeninde yaptım.
-cols = st.columns(3)
+# --- 5. ANA SAYFA İÇERİĞİ ---
+def main():
+    inject_custom_css()
+    
+    # Hero Section
+    st.markdown(f"""
+    <div class="hero-banner">
+        <p style="color: #fcd535; font-weight: 700; text-transform: uppercase; margin-bottom: 10px;">V2.1 - Enterprise Lakehouse Architecture</p>
+        <h1>UÇTAN UCA FİNANSAL<br>VERİ EKOSİSTEMİ</h1>
+        <p style="font-size: 18px; color: #848e9c;">
+            Bu platform; <b>Binance</b> üzerinden akan saniyelik verileri <b>Lambda Mimarisi</b> ile işleyen, 
+            <b>Delta Lake</b> üzerinde depolayan ve <b>MLOps</b> prensipleriyle tahminleyen profesyonel bir veri terminalidir.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-for i, service in enumerate(services):
-    col = cols[i % 3]
-    with col:
-        # st.container(border=True) kullanıyoruz, CSS ile buna stil verdik
-        with st.container(border=True):
-            # İkon ve Başlık Yan Yana
-            c_icon, c_text = st.columns([1, 4])
-            with c_icon:
-                st.markdown(f"<h1 style='text-align: center;'>{service['icon']}</h1>", unsafe_allow_html=True)
-            with c_text:
-                st.markdown(f"**{service['name']}**")
-                st.caption(service['desc'])
-            
-            # Detaylar (Expander içinde gizli, daha temiz görünüm)
-            with st.expander("Giriş Bilgileri"):
-                if service['name'] == "Metabase BI":
-                    st.code("User: admin\nPass: admin\nDB: market_db", language="yaml")
-                elif service['user'] != "-":
-                    st.code(f"User: {service['user']}\nPass: {service['pass']}", language="yaml")
-                else:
-                    st.success("Açık Erişim")
+    # Mimari Şema Bölümü (KRİTİK GÖRSEL)
+    st.subheader("🏗️ Sistem Akış Şeması (End-to-End Pipeline)")
+    with st.container():
+        st.markdown('<div class="arch-container">', unsafe_allow_html=True)
+        show_architecture()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-            # Buton
-            st.link_button(f" {service['name']} Aç", service['url'], use_container_width=True)
+    # Sistem Durum Paneli
+    st.subheader("🌐 Canlı Altyapı Metrikleri")
+    conn_status = check_connections()
+    c1, c2, c3 = st.columns(3)
+    
+    with c1:
+        st.markdown(f"""<div class="status-card"><p style="color:#848e9c;">TimescaleDB</p><h3>Postgres</h3>
+            <span class="{'led-green' if conn_status['Postgres'] else 'led-red'}">{'● ONLINE' if conn_status['Postgres'] else '○ OFFLINE'}</span></div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""<div class="status-card"><p style="color:#848e9c;">Object Storage</p><h3>MinIO (S3)</h3>
+            <span class="{'led-green' if conn_status['MinIO'] else 'led-red'}">{'● ONLINE' if conn_status['MinIO'] else '○ OFFLINE'}</span></div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""<div class="status-card"><p style="color:#848e9c;">ML Engine</p><h3>MLflow</h3>
+            <span class="{'led-green' if conn_status['MLflow'] else 'led-red'}">{'● ONLINE' if conn_status['MLflow'] else '○ OFFLINE'}</span></div>""", unsafe_allow_html=True)
 
-st.markdown("---")
-st.caption("© 2026 Real-Time Financial Lakehouse | Architect: Ömer Çakan")
+    st.divider()
+
+    # Navigasyon
+    st.subheader("🚀 Hızlı Erişim")
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.info("### ⚡ Real-Time\nKafka & Spark Dual-Track yoluyla milisaniyelik analiz.")
+        if st.button("CANLI TERMİNAL"): st.switch_page("pages/_Canli_Piyasa.py")
+    with m2:
+        st.success("### 📂 Lakehouse\nDelta Lake ve Rust motoruyla 10 yıllık borsa arşivi.")
+        if st.button("GEÇMİŞ ANALİZ"): st.switch_page("pages/Gecmis_Analiz.py")
+    with m3:
+        st.warning("### 🧠 MLOps\nAutoML Liderlik Tablosu ve Model Versiyonlama.")
+        if st.button("MLOPS MERKEZİ"): st.switch_page("pages/_MLOps_Center.py")
+
+    st.divider()
+    
+    # Terminal Log Footer
+    st.markdown(f"""
+    <div style="background-color: #181a20; padding: 20px; border-radius: 10px; border: 1px solid #2b3139; font-family: 'JetBrains Mono'; font-size: 13px;">
+        <p style="color: #848e9c;">> _Initialization_Sequence_Complete...</p>
+        <p style="color: #0ecb81;">- Lambda Architecture: ACTIVE (Speed & Batch Layers)</p>
+        <p style="color: #0ecb81;">- MaaS Engine: OPERATIONAL (FastAPI)</p>
+        <p style="color: #0ecb81;">- Storage Layer: DELTA LAKE ENABLED (MinIO)</p>
+        <p style="color: #fcd535;">- Last Heartbeat: {datetime.now().strftime('%H:%M:%S')}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
