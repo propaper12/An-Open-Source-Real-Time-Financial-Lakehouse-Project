@@ -6,10 +6,10 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, current_timestamp, coalesce, window, stddev_pop, avg, last
 from pyspark.sql.types import StructType, StringType, DoubleType
 
-# Mimariyi V6.0 sürümüne taşıyarak ML tahminleme süreçlerini Spark içerisinden çıkardım.
+# Mimariyi V6.1 sürümüne taşıyarak ML tahminleme süreçlerini Spark içerisinden çıkardım.
 # Artık Spark, ağır hesaplamaları yapıp sonuçları mikroservis olarak kurguladığım API'ye iletiyor.
 print("\n" + "="*50)
-print("V6.0 GÜNCELLEME: MICROSERVICE INFERENCE (API) AKTİF")
+print("V6.1 GÜNCELLEME: MICROSERVICE INFERENCE (API) AKTİF")
 print("="*50 + "\n")
 
 time.sleep(3)
@@ -103,26 +103,23 @@ windowed_df = normalized_df \
 
 def process_batch_with_ai(batch_df, batch_id):
     """
-    Her mikro-batch için çalışan ana mantık. 
-    Hesaplanan metrikleri Inference API'ye gönderir ve sonuçları kaydeder.
+    V6.1 GÜNCELLEMESİ: BATCH INFERENCE (Toplu Çıkarım)
+    Spark artık verileri satır satır değil, tek bir kargo paketi (JSON Array) 
+    halinde Inference API'ye gönderiyor. Network I/O darboğazı çözüldü!
     """
     if batch_df.rdd.isEmpty(): return
     
-    # TEKNİK DÜZELTME: Pandas 2.0+ sürümlerinde datetime64 cast hatalarını önlemek için 
-    # tarihi geçici olarak string formatına dönüştürüp işleme devam ediyorum.
     safe_batch_df = batch_df.withColumn("processed_time", col("processed_time").cast("string"))
     pdf = safe_batch_df.toPandas()
     
-    results = []
-
+    # 1. API'ye gönderilecek "Kargo Paketini" (Payload) hazırlıyoruz
+    payload_data = []
     for index, row in pdf.iterrows():
-        symbol = row['symbol']
         current_price = float(row['average_price'])
         volatility = float(row['volatility']) if pd.notnull(row['volatility']) else 0.0
         
-        # API için gerekli öznitelik (feature) setini hazırlıyorum.
-        payload = {
-            "symbol": symbol,
+        payload_data.append({
+            "symbol": row['symbol'],
             "volatility": volatility,
             "lag_1": current_price, 
             "lag_3": current_price, 
@@ -130,49 +127,56 @@ def process_batch_with_ai(batch_df, batch_id):
             "ma_10": current_price, 
             "momentum": 0.0,
             "volatility_change": 0.0
-        }
-        
-        try:
-            # Tahminleme işlemini merkezi Inference API üzerinden gerçekleştiriyorum.
-            # Timeout ve hata yönetimi ekleyerek ağ kaynaklı gecikmelere karşı önlem aldım.
-            resp = requests.post(INFERENCE_API_URL, json=payload, timeout=2)
-            if resp.status_code == 200:
-                pred_price = resp.json().get("predicted_price", current_price)
-            else:
-                # API başarısız olursa sistem sürekliliği için fallback olarak mevcut fiyatı kullanıyorum.
-                pred_price = current_price 
-        except Exception:
-            pred_price = current_price
-            
-        results.append({
-            "symbol": symbol,
-            "volatility": volatility,
-            "average_price": current_price,
-            "processed_time": row['processed_time'],
-            "predicted_price": float(pred_price)
         })
-
-    if results:
-        from pyspark.sql.functions import to_timestamp
         
-        # API'den gelen tahminleri tekrar Spark DataFrame yapısına dönüştürüyorum.
-        res_df = spark.createDataFrame(results)
-        
-        # String olarak tutulan tarihi orijinal zaman damgası (Timestamp) formatına geri çeviriyorum.
-        res_df = res_df.withColumn("processed_time", to_timestamp(col("processed_time")))
-        
-        # Polyglot Persistence yaklaşımı: 
-        # 1. Analitik sorgular ve model eğitimi için veriyi Delta Lake (MinIO) üzerine yazıyorum.
-        res_df.write.format("delta").mode("append").partitionBy("symbol").save("s3a://market-data/silver_layer_delta")
-        
-        # 2. Gerçek zamanlı dashboard gösterimi için veriyi PostgreSQL/TimescaleDB üzerine aktarıyorum.
-        try:
-            pg_df = res_df.select("symbol", "volatility", "average_price", "processed_time", "predicted_price")
-            pg_df.write.jdbc(url=PG_URL, table="market_data", mode="append", properties=PG_PROPERTIES)
-            print(f"Batch {batch_id}: {len(results)} kayıt işlendi ve sistemlere aktarıldı.")
-        except Exception as e:
-            print(f"Veritabanı yazma hatası: {e}")
+    batch_payload = {"data": payload_data}
+    
+    # Varsayılan tahminleri mevcut fiyat olarak ayarla (Fallback mekanizması)
+    pdf['predicted_price'] = pdf['average_price']
+    
+    # 2. TEK BİR HTTP İSTEĞİ (100 satır bile olsa sadece 1 kere ağa çıkılır)
+    BATCH_API_URL = INFERENCE_API_URL.replace("/predict", "/predict_batch") 
+    
+    try:
+        resp = requests.post(BATCH_API_URL, json=batch_payload, timeout=3)
+        if resp.status_code == 200:
+            # API'den gelen toplu cevapları al
+            predictions = resp.json().get("predictions", [])
             
+            # Gelen tahminleri sembollere göre bir sözlüğe (dictionary) çevir
+            pred_dict = {p['symbol']: p['predicted_price'] for p in predictions}
+            
+            # Pandas'ın vektörel gücüyle tahminleri Dataframe'e hızlıca eşleştir (map)
+            pdf['predicted_price'] = pdf['symbol'].map(pred_dict).fillna(pdf['average_price'])
+            print(f"Batch {batch_id}: {len(pdf)} kayıt için toplu tahmin başarıyla alındı.")
+        else:
+            print(f"API Hatası (Status {resp.status_code}): Fallback fiyatlar kullanılıyor.")
+    except Exception as e:
+        print(f"API Bağlantı Hatası: {e}. Fallback fiyatlar kullanılıyor.")
+
+    # 3. Sonuçları Spark DataFrame'e geri çevir ve veritabanlarına yaz
+    from pyspark.sql.functions import to_timestamp
+    
+    # ŞEMA UYUŞMAZLIĞINI (SCHEMA MISMATCH) ÖNLEMEK İÇİN YALNIZCA HEDEFLENEN SÜTUNLARI ALIYORUZ
+    pdf_final = pdf[["average_price", "predicted_price", "processed_time", "symbol", "volatility"]]
+    
+    res_df = spark.createDataFrame(pdf_final)
+    res_df = res_df.withColumn("processed_time", to_timestamp(col("processed_time")))
+    
+    # MinIO (Delta Lake) Kaydı - mergeSchema="true" eklenerek şema uyumsuzluğu riski sıfırlandı
+    res_df.write.format("delta") \
+          .mode("append") \
+          .option("mergeSchema", "true") \
+          .partitionBy("symbol") \
+          .save("s3a://market-data/silver_layer_delta")
+    
+    # PostgreSQL (TimescaleDB) Kaydı
+    try:
+        pg_df = res_df.select("symbol", "volatility", "average_price", "processed_time", "predicted_price")
+        pg_df.write.jdbc(url=PG_URL, table="market_data", mode="append", properties=PG_PROPERTIES)
+    except Exception as e:
+        print(f"Veritabanı yazma hatası: {e}")
+        
 # Stream işlemini 5 saniyelik mikro-batch pencereleriyle başlatıyorum.
 # Checkpoint kullanarak olası çökme durumlarında veri kaybı olmadan kaldığı yerden devam etmesini sağladım.
 query = windowed_df.writeStream \
