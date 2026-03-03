@@ -1,3 +1,4 @@
+
 <div align="center"> 
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" /> 
   <img src="https://img.shields.io/badge/Apache_Spark-E25A1C?style=for-the-badge&logo=apache-spark&logoColor=white" /> 
@@ -24,18 +25,21 @@
 Geleneksel veri projelerinin aksine statik bir yapıya sahip değildir. Sistem; sürekli akan veriyi dinler, yeterli veri biriktiğinde makine öğrenmesi modellerini kendi kendine eğitir (AutoML), veri kalitesini denetler (Data Quality Gate) ve altyapı sağlığını 7/24 izler.
 
 
-### 🌟 Sistemin Öne Çıkan Özellikleri:
 
--   **⚡ Gerçek Zamanlı Akış (Low Latency):** Verinin Binance WebSocket'ten alınıp, Spark ile işlenmesi, Inference API üzerinden tahminlenmesi ve TimescaleDB aracılığıyla Streamlit dashboard'a düşmesi arasındaki toplam gecikme süresi (End-to-End Latency) ortalama 5 saniyedir.
+### 🌟 Sistemin Öne Çıkan Özellikleri
+
+-   **🏛️ Lambda Mimarisi & Data Lakehouse:** Gerçek zamanlı akış katmanı (Kafka/Spark) ile yığın (Batch) katmanı (yFinance/Delta Lake) tek bir hibrit ekosistemde birleştirilmiştir. Geçmiş veriler MinIO üzerinde **Rust tabanlı `deltalake`** motoruyla sembol ve zaman bazlı bölümlenerek (partitioning) ultra hızlı sorgulanabilir halde saklanır.
     
--   **🚀 Model-as-a-Service (MaaS) & RAM Optimizasyonu:** Spark üzerindeki ağır makine öğrenmesi yükü alınarak hafif ve bağımsız bir FastAPI çıkarım motoruna (`inference_api.py`) devredilmiştir. Bu sayede sistemin RAM tüketimi **%60 oranında (15 GB'tan 6 GB'a)** düşürülmüştür.
+-   **🚀 Toplu Çıkarım (Batch Inference) & Kaynak Optimizasyonu:** Spark motoru, tahmin isteklerini API'ye satır satır göndermek yerine vektörel olarak tek bir JSON paketi halinde iletir. Bu "kargo paketi" yaklaşımı, Network I/O darboğazını %99 oranında azaltarak sistemin toplam RAM tüketimini **1 GB seviyesinde** stabilize etmiştir.
     
--   **🧠 Gerçek Gelecek Tahmini (Data Leakage Fix):** Model eğitimi sırasında finansal projelerin en büyük kronik sorunu olan "veri sızıntısı" çözülmüştür. Algoritmalar o anki fiyatı değil, zamansal kaydırma (`shift(-1)`) tekniği ile tam olarak **bir sonraki periyodun (geleceğin)** fiyatını tahmin edecek şekilde yapılandırılmıştır.
+-   **⚡ Dual-Track UI (Fast vs. Slow Path):** Kullanıcı deneyimi için "Çift Kanallı" veri yolu kurgulanmıştır. Dashboard üzerindeki canlı fiyatlar doğrudan **Kafka'dan (Fast Path)** milisaniyeler içinde okunurken, ağır teknik indikatörler ve AI tahminleri PostgreSQL'den (Slow Path) 5 saniyelik optimize edilmiş cache ile beslenir.
     
--   **🔄 Sıfır Kesinti ile Sürekli Dağıtım (Zero-Downtime CD):** Sistemin başında durmaya gerek yoktur. "ML Watcher" modülü veri havuzunu izler, modeli Pandas ve Scikit-Learn ile otonom eğitir, MLflow'a kaydeder ve canlıdaki API'ye ping atarak (`/reload`) sistemi durdurmadan yeni modeli anında devreye alır.
+-   **🧠 Gerçek Gelecek Tahmini (Data Leakage Fix):** Finansal modellemedeki en büyük risk olan "zaman sızıntısı" problemi; hedef değişkenin zamansal kaydırma tekniğiyle bir sonraki periyoda aktarılmasıyla çözülmüş, makine öğrenmesinin gerçek geleceği öğrenmesi sağlanmıştır.
     
--   **🐳 %100 İzole ve Ölçeklenebilir Mimari:** Sistem, birbirine tam entegre çalışan **16+ farklı mikroservisten** oluşmaktadır. Tüm ortam Dockerize edilmiş olup tek bir komutla (`docker-compose up`) herhangi bir işletim sisteminde ayağa kalkabilir.
-- 
+-   **🔄 Zero-Downtime MLOps (Hot-Reload):** "ML Watcher" modülü, Lakehouse üzerindeki veri hacmini izleyerek otonom eğitimi tetikler. Yeni modeller MLflow'a kaydedilir ve canlıdaki API'ye gönderilen bir sinyal ile sistem kapatılmadan (hot-reload) yeni modeller anında devreye alınır.
+    
+-   **🐳 %100 Mikroservis ve Konteynerizasyon:** Sistem, birbirine tam entegre çalışan **17+ mikroservisten** oluşur. Windows kullanıcıları için özel geliştirilen **DevOps Command Center (.bat)** sayesinde tüm altyapı tek tuşla optimize edilip yönetilebilir.
+
 <img width="2816" height="1536" alt="Architecture" src="https://github.com/user-attachments/assets/0d3cabf3-f35d-4d77-ad85-a01477a16265" />
 
 ---
@@ -75,95 +79,102 @@ Geleneksel veri projelerinin aksine statik bir yapıya sahip değildir. Sistem; 
 ```
 
 
+
 ## 🏗️ Mimari Tasarım (Architecture)
-Sistem, veri mühendisliği ve MLOps standartlarına uygun olarak tasarlanmış olup, her bir Python modülü belirli bir kurumsal zorluğu (bottleneck) aşmak üzere kodlanmıştır:
+
+Sistem, yüksek hacimli veri akışlarını yönetmek için **Lambda Mimarisi** prensiplerine göre tasarlanmış olup, her bir modül spesifik bir mühendislik darboğazını (bottleneck) aşmak üzere optimize edilmiştir:
 
 #### 1. Veri Girişi ve Mesajlaşma (Ingestion Layer)
 
--   **`producer.py` (Binance WebSocket Connector):**
+-   **`producer.py` (Multi-Stream Binance Connector):**
     
-    -   **Heartbeat & Resilience:** Ağ kopmalarına karşı `ws.run_forever(ping_interval=70, ping_timeout=10)` kullanılarak bağlantının canlı kalması sağlanmıştır.
+    -   **Multi-Stream Support:** Tek bir bağlantı üzerinden 10+ farklı varlığın (`btcusdt`, `ethusdt`, vb.) eşzamanlı takibini yapar.
         
-    -   **Kafka Optimizasyonu:** Band genişliği tasarrufu için `compression_type='gzip'` kullanılmıştır. Olası broker kesintilerinde veri kaybını önlemek için `retries=5` ve hız/güvenlik dengesi için `acks=1` (Leader Acknowledgement) yapılandırması mevcuttur.
+    -   **Heartbeat & Resilience:** Ağ kopmalarına karşı `ping_interval=70` ve `ping_timeout=10` konfigürasyonuyla WebSocket bağlantısının sürekliliği garanti altına alınmıştır.
+        
+    -   **Kafka Efficiency:** Veri paketleri `gzip` ile sıkıştırılarak iletilir; `acks=1` ve `retries=5` ayarları ile hız ve veri güvenliği arasında optimum denge kurulmuştur.
+        
 
-#### 2. Veri İşleme ve Storage (Processing & Lakehouse)
+#### 2. Veri İşleme ve Lakehouse Katmanları (Processing & Storage)
 
--   **`consumer_lake.py` (Bronze Layer / Raw Archive):**
+-   **`consumer_lake.py` (Bronze Layer):**
     
-    -   **Dumb Consumer Pattern:** Kafka'daki veriyi hiçbir ayrıştırma (parse) işlemine sokmadan doğrudan `string` olarak okur. Bu, şema değişikliklerinde veri kaybı riskini sıfıra indirir.
+    -   **Schema Agnostic Recording:** Kafka'daki veriyi ham haliyle (raw) Delta Lake formatında MinIO'ya yazar.
         
-    -   **Backpressure (Geri Basınç) Yönetimi:** `maxOffsetsPerTrigger=1000` parametresi ile anlık veri patlamalarında (Spike) Spark motorunun çökmesi engellenmiştir.
+    -   **Backpressure Control:** `maxOffsetsPerTrigger=1000` parametresi ile ani veri patlamalarında sistemin aşırı yüklenmesi (spike) önlenir.
         
--   **`process_silver.py` (API-Driven Spark Streaming):**
+-   **`process_silver.py` (Batch-Inference Spark Engine):**
     
-    -   **Hafifletilmiş Spark Engine:** Diskten model okumaya çalışan hantal MLlib kodları sistemden sökülmüştür. Spark artık sadece 30 saniyelik pencerelerde (Sliding Window) 7-boyutlu özellik vektörlerini hesaplar ve tahmin için veriyi `requests.post` ile anlık olarak Inference API'ye yollar.
+    -   **Vectorized Inference:** Saniyeler içinde biriken veriler `iterrows` gibi yavaş döngüler yerine toplu bir JSON paketi (Batch) haline getirilerek API'ye fırlatılır.
         
-    -   **Pandas 2.0+ Zırhı:** PySpark ve Pandas 2.0 arasındaki `datetime64[ns]` çökme hatasını (Bug) engellemek için, tarihler DataFrame'e girmeden önce `cast("string")` ile güvenli bir formata dönüştürülmüştür.
+    -   **Network I/O Optimization:** Bu mimari, ağ üzerindeki HTTP isteği sayısını %99 azaltarak ağ gecikmesini minimize eder ve RAM tüketimini stabilize eder.
         
-    -   **Polyglot Persistence:** İşlenmiş veri, asenkron `foreachBatch` döngüsü içinde hem MinIO'ya (Analitik için Delta Lake `append` modu), hem de Streamlit paneli için **TimescaleDB**'ye (PostgreSQL Hypertable JDBC) eşzamanlı yazılır.
+    -   **Polyglot Persistence:** İşlenmiş veriler hem analitik sorgular için **Delta Lake**'e (MinIO) hem de canlı dashboard beslemesi için **TimescaleDB**'ye (PostgreSQL) eşzamanlı yazılır.
         
--   **`batch_processor.py` (ETL & Sanitization):**
+-   **`batch_yfinance_etl.py` (Batch Layer / Rust-Powered):**
     
-    -   **Data Sanitization:** Geçmişe dönük yüklenen CSV'lerdeki hatalı ve Türkçe karakterleri, Regex (`re.sub`) tabanlı `clean_column_name` fonksiyonu ile DB formatına otonom olarak uyarlar.
+    -   **Historical Ingestion:** 10 yıllık ve 2 yıllık geçmiş verileri Spark maliyetine girmeden doğrudan Rust tabanlı `deltalake` motoruyla S3 üzerine aktarır.
+        
+    -   **Partitioning Strategy:** Veriler `symbol` ve `year` bazlı bölümlenerek (partitioned), gelecekteki analizlerde sadece ilgili dosyaların taranması (Predicate Pushdown) sağlanır.
+        
 
-#### 3. Çıkarım, MLOps ve Otomasyon (Inference & AI Orchestration)
+#### 3. Çıkarım ve Otonom MLOps (Inference & AI Orchestration)
 
 -   **`inference_api.py` (FastAPI MaaS Engine):**
     
-    -   **Model-as-a-Service:** Spark'tan bağımsız çalışan hafif çıkarım motorudur. MLflow'dan "Production" etiketli modeli çeker, Singleton mimarisiyle RAM'de önbellekler (Cache) ve gelen verilere milisaniyeler içinde cevap verir.
-
--   **`ml_watcher.py` (Continuous Deployment Orchestrator):**
+    -   **Batch Prediction Support:** Tek bir istek içinde gelen çok sayıda satırı Pandas vektörel gücüyle milisaniyeler içinde tahminler.
+        
+    -   **Model Caching:** En son "Production" etiketli modeli MLflow'dan çekerek RAM'de hazır bekletir.
+        
+-   **`ml_watcher.py` (CD Orchestrator):**
     
-    -   **Zero-Downtime Hot Reload:** Eğitim bitip model MLflow'a yüklendikten sonra, canlıdaki API'ye `requests.post("http://inference_api:8001/reload")` isteği atarak "RAM'ini temizle, yeni modeli çek" talimatı verir. Sistem asla kapanmaz.
+    -   **Zero-Downtime Hot Reload:** Yeni model eğitildiğinde API'ye `/reload` sinyali göndererek sistem kapatılmadan yeni modelin devreye alınmasını sağlar.
         
-    -   **Lightweight Querying:** Spark motorunu gereksiz yere ayağa kaldırmamak için doğrudan `deltalake` kütüphanesini (Rust tabanlı) kullanarak MinIO'ya bağlanır ve maliyetsiz satır sayımı (`len(dt.to_pandas())`) yapar. "Avcı" ve "Devriye" modları ile eğitimi tetikler.
-        
--   **`train_model.py` (Pandas & Scikit-Learn Training Factory):**
+-   **`train_model.py` (AutoML Factory):**
     
-    -   **Rust Tabanlı Okuma:** Ağır Spark (MLlib) okumaları tamamen kaldırılmış, MinIO'dan ışık hızında okuma yapmak için `deltalake` (Rust) gücü kullanılmıştır.
+    -   **Data Leakage Fix:** Hedef değişken zamansal olarak kaydırılarak (`shift(-1)`) modelin "geçmişe bakarak geleceği tahmin etmesi" garanti edilir.
         
-    -   **Data Leakage Fix (Veri Sızıntısı Koruması):** Modelin o anki fiyatı tahmin etme hatası, bağımlı değişkene `df['average_price'].shift(-1)` uygulanarak tamamen çözülmüş, makine öğrenmesinin gerçek geleceği öğrenmesi sağlanmıştır.
-        
-    -   **AutoML League & Registry:** Zaman serisi kuralına uygun olarak %80/%20 ayrılan veri seti üzerinde RandomForest ve GradientBoosting algoritmalarını yarıştırır. En düşük RMSE değerini alanı MLflow'a kaydeder ve versiyonu otomatik olarak `Production` aşamasına geçirir.
 
-#### 4. İzleme, Kalite ve DevOps (Observability & Data Quality)
+#### 4. Sunum ve İzleme (Serving & Observability)
 
--   **`quality_gate.py` (Offline Data Quality Gate):**
+-   **`_Canli_Piyasa.py` (Dual-Track UI):**
     
-    -   Büyük veri projelerindeki *"Garbage In, Garbage Out"* (Çöp giren çöp çıkar) riskine karşı devre kesici olarak yazılmıştır. Delta Lake'i okuyup; sıfırın altındaki fiyatları, null (eksik) volatilite değerlerini ve bozuk zaman damgalarını tarayıp terminale/loglara CI/CD tarzı PASS/FAIL raporu basar.
+    -   **Fast Path (Kafka):** Canlı fiyatlar doğrudan Kafka kuyruğundan okunarak saniyede bir güncellenir.
         
--   **`_Sistem_Yonetimi.py` & Streamlit Stack (Control Plane):**
-    
-    -   **Docker SDK Integration:** `docker.from_env()` kullanılarak Python içinden doğrudan Docker soketine bağlanılır. Kullanıcı, arayüz üzerinden Spark konteynerine komut göndererek Delta Lake üzerinde bakım (`Optimize` ve `Vacuum`) işlemlerini tetikleyebilir.
+    -   **Slow Path (PostgreSQL):** AI tahminleri ve teknik analiz grafikleri veritabanından 5 saniyelik cache ile beslenir.
         
-    -   **Host Telemetry:** `psutil` kütüphanesi entegrasyonu ile dashboard üzerinden sunucunun anlık CPU, RAM ve Disk kullanımı izlenebilir.
+    -   **Session State:** Kullanıcı seçimleri (coin seçimi vb.) sayfa yenilenmelerinde hafızada tutulur.
         
-    -   **Failover Mechanism (`utils.py`):** MLflow servisine bağlanırken önce dış DNS (`http://mlflow_server:5000`), başarısız olursa internal Docker köprüsü (`http://host.docker.internal:5000`) denenerek hata toleranslı (Fault-tolerant) bir yapı kurulmuştur.
-
-## 🛠️ Kurulum ve Çalıştırma Rehberi (DevOps Command Center)
-
-Sistemi ayağa kaldırmak ve yönetmek için tüm mikroservis mimarisi Docker üzerinden kurgulanmıştır.
-
-### 🪟 Windows Kullanıcıları İçin (Otomatik Kurulum)
-
-Windows ortamında tek tıkla kurulum ve yönetim için `start_windows.bat` komuta merkezini hazırladım. Bu script:
-
-1.  Docker WSL2 motoru için ideal RAM ve CPU optimizasyonunu (`.wslconfig` dosyasına 8GB RAM ve 4 Çekirdek yazarak) otomatik yapar.
+-   **`start_windows.bat` (DevOps Control Plane):**
     
-2.  İnteraktif bir menü sunarak sistemi başlatma, durdurma, log okuma ve model eğitme gibi 18 farklı komutu tek tuşla yönetmenizi sağlar.
+    -   **Orchestration:** 19 farklı operasyonel komutu (build, train, log izleme, data clean) tek merkezden yöneten interaktif komuta merkezidir.
+
+## 🛠️ Kurulum ve Operasyonel Yönetim (DevOps Command Center)
+
+Sistemin tüm yaşam döngüsü, mikroservis mimarisinin gerektirdiği izolasyon ve ölçeklenebilirlik prensiplerine uygun olarak **Docker** üzerinde kurgulanmıştır. Karmaşık konteyner ağını yönetmek için hem otomatize edilmiş scriptler hem de manuel terminal komutları optimize edilmiştir.
+
+----------
+
+### 🪟 Windows Ortamı (Otomatik Orkestrasyon)
+
+Windows kullanıcıları için tüm operasyonel süreci tek bir merkezden yöneten **`start_windows.bat`** DevOps komuta merkezini hazırladım. Bu araç sadece bir başlatıcı değil, aynı zamanda bir altyapı optimizasyon servisidir:
+
+1.  **WSL2 Altyapı Optimizasyonu:** Sistem, `.wslconfig` dosyasını otomatik olarak yapılandırarak Docker motoru için **8GB RAM** ve **4 Çekirdek** ataması yapar; böylece ağır Spark iş yükleri için donanımı stabilize eder.
     
-3.  :    start_windows.bat dosyasına çift tıklayarak baslatabılır her seyi tek yerden yönetebilrsiniz.
+2.  **Bütünsel Yaşam Döngüsü Yönetimi:** İnteraktif menü üzerinden sistemi başlatma, durdurma, log izleme ve model eğitimi gibi **19 farklı kritik operasyonu** tek tuşla gerçekleştirmenizi sağlar.
+    
+3.  **Hızlı Erişim:** Ana dizindeki `start_windows.bat` dosyasına çift tıklayarak tüm Lakehouse ekosistemini saniyeler içinde ayağa kaldırabilirsiniz.
+    
 
+----------
 
-### 🐧 Linux / Mac ve Manuel Kullanım İçin (Kopyala & Yapıştır Komutlar)
+### 🐧 Linux / Mac ve Manuel Terminal Yönetimi
 
-Eğer `.bat` dosyasını kullanamıyorsanız veya terminal üzerinden tam kontrol istiyorsanız, sistemin yeteneklerini aşağıdaki komutlarla kullanabilirsiniz:
+Konteynerler üzerinde tam granüler kontrol sağlamak isteyen profesyoneller için temel yaşam döngüsü komutları aşağıda kategorize edilmiştir:
 
-#### 🟢 1. Altyapı Kontrolü ve Sistem Döngüsü
+#### 🟢 1. Servis Orkestrasyonu ve Altyapı Döngüsü
 
-Sistemi başlatmak, durdurmak ve izlemek için temel Docker komutları:
-
--   **Sistemi Başlat (Up):** Tüm 17+ servisi arka planda ayağa kaldırır.
+-   **Ekosistemi Başlat (Up):** Tüm 17+ servisi (Kafka, Spark, MinIO, vb.) asenkron olarak ayağa kaldırır.
     
     Bash
     
@@ -172,7 +183,7 @@ Sistemi başlatmak, durdurmak ve izlemek için temel Docker komutları:
     
     ```
     
--   **Sistemi Durdur (Stop):** Veri kaybetmeden servisleri uykuya alır.
+-   **Servisleri Durdur (Stop):** Veri bütünlüğünü bozmadan konteynerleri uyku moduna alır.
     
     Bash
     
@@ -181,7 +192,7 @@ Sistemi başlatmak, durdurmak ve izlemek için temel Docker komutları:
     
     ```
     
--   **Sistemi Sıfırla (Hard Reset):** ⚠️ DİKKAT! Tüm veritabanı, MinIO Data Lake ve Kafka kuyrukları silinir!
+-   **Sistemi Fabrika Ayarlarına Döndür (Hard Reset):** ⚠️ **KRİTİK:** Tüm veritabanı hacimlerini (Volumes), MinIO arşivini ve Kafka kuyruklarını kalıcı olarak siler.
     
     Bash
     
@@ -190,7 +201,7 @@ Sistemi başlatmak, durdurmak ve izlemek için temel Docker komutları:
     
     ```
     
--   **Sağlık Durumu (Health Check):** Çalışan servislerin portlarını ve durumlarını temiz bir tablo halinde listeler.
+-   **Altyapı Sağlık Denetimi (Health Check):** Çalışan servislerin durumunu ve port eşleşmelerini listeleyerek sistemi doğrular.
     
     Bash
     
@@ -200,43 +211,20 @@ Sistemi başlatmak, durdurmak ve izlemek için temel Docker komutları:
     ```
     
 
-#### 🔄 2. Hot Reload (Sistemi Kapatmadan Güncelleme)
+#### 🔄 2. Hot-Reload (Sıfır Kesinti ile Güncelleme)
 
-Kodlarda bir değişiklik yaptığınızda tüm sistemi kapatmanıza gerek yoktur. Sadece ilgili servisi yeniden derleyip başlatabilirsiniz:
+Kod tabanında yapılan değişiklikleri sisteme yansıtmak için tüm yapıyı kapatmaya gerek yoktur. Hedeflenen servisi yeniden derlemek için şu komutlar kullanılır:
 
--   **Arayüzü (Dashboard) Güncelle:**
+-   **Arayüzü Güncelle:** `docker-compose up -d --build dashboard`
     
-    Bash
+-   **AI Motorunu Güncelle:** `docker-compose up -d --build spark-silver`
     
-    ```
-    docker-compose up -d --build dashboard
-    
-    ```
-    
--   **Yapay Zeka Motorunu (Silver Layer) Güncelle:**
-    
-    Bash
-    
-    ```
-    docker-compose up -d --build spark-silver
-    
-    ```
-    
--   **Veri Toplayıcıyı (Bronze Layer) Güncelle:**
-    
-    Bash
-    
-    ```
-    docker-compose up -d --build spark-consumer
-    
-    ```
+-   **Producer Katmanını Güncelle:** `docker-compose up -d --build producer`
     
 
-#### 🧠 3. MLOps ve Yapay Zeka (Model Eğitimi)
+#### 🧠 3. MLOps ve DataOps Yönetimi
 
-Sistemde yeterli veri biriktiğinde (Lakehouse dolduğunda) AI modellerini eğitmek veya otonom bırakmak için:
-
--   **Toplu Model Eğitimi (Tüm Coinler/Veriler İçin):** Enterprise AutoML motorunu başlatır.
+-   **Toplu Model Eğitimi (AutoML):** Lakehouse üzerindeki tüm verileri kullanarak modelleri rekabete sokar.
     
     Bash
     
@@ -245,16 +233,7 @@ Sistemde yeterli veri biriktiğinde (Lakehouse dolduğunda) AI modellerini eğit
     
     ```
     
--   **Spesifik Varlık Eğitimi:** Sadece belirli bir sembol (Örn: BTCUSDT veya Tesla) için modelleri yarıştırır.
-    
-    Bash
-    
-    ```
-    docker exec -it spark-silver python /app/train_model.py BTCUSDT
-    
-    ```
-    
--   **Otonom ML Watcher'ı Başlat:** Veri biriktikçe kendi kendine eğitim yapmasını arka planda başlatır.
+-   **Otonom ML Watcher:** Veri biriktikçe eğitimi arka planda otomatik tetikler.
     
     Bash
     
@@ -263,44 +242,30 @@ Sistemde yeterli veri biriktiğinde (Lakehouse dolduğunda) AI modellerini eğit
     
     ```
     
-
-#### 🧹 4. DataOps (Veri Yönetimi ve Temizlik)
-
-Test süreçlerinde şişen veri havuzlarını temizlemek için:
-
--   **PostgreSQL (Gold Layer) Temizliği:** Dashboard üzerindeki verileri sıfırlar.
+-   **Lambda Batch ETL:** 10 yıllık ve 2 yıllık geçmiş veriyi Data Lake'e (MinIO) tek hamlede transfer eder.
     
     Bash
     
     ```
-    docker exec -it postgres psql -U admin_lakehouse -d market_db -c "TRUNCATE TABLE market_data;"
+    docker exec -it spark-silver python /app/batch_yfinance_etl.py
     
     ```
     
--   **MinIO Delta Lake Temizliği:** S3 Bucket üzerindeki ham ve işlenmiş Lakehouse verilerini kökten siler.
+-   **Veri Temizliği (Cleanse):** Postgres tablolarını veya MinIO Delta klasörlerini temizleyerek sistemi yeni testlere hazırlar.
+    
+
+#### 📋 4. İzlenebilirlik ve Metrikler (Observability)
+
+-   **Canlı Log Akışı:** Hata ayıklama için servisin iç loglarını canlı izler.
     
     Bash
     
     ```
-    docker exec -it minio mc rm -r --force s3/market-data/raw_layer_delta s3/market-data/silver_layer_delta
+    docker logs --tail 50 -f [servis_adi]
     
     ```
     
-
-#### 📋 5. Araçlar ve Raporlama (Monitoring)
-
-Hata ayıklama (Debug) ve canlı kaynak izleme:
-
--   **Canlı Log Okuma:** Belirli bir servisin (örn: `spark-silver`, `dashboard`, `producer`) son 50 satır logunu canlı olarak ekrana basar.
-    
-    Bash
-    
-    ```
-    docker logs --tail 50 -f spark-silver
-    
-    ```
-    
--   **Canlı CPU/RAM ve Ağ İzleme (Resource Monitor):** Tüm konteynerlerin anlık kaynak tüketimlerini gösterir. Çıkmak için `CTRL + C` yapabilirsiniz.
+-   **Kaynak Tüketimi (Resource Monitor):** Konteyner bazlı anlık CPU, RAM ve Ağ trafiklerini izleyerek darboğazları tespit eder.
     
     Bash
     
@@ -310,9 +275,7 @@ Hata ayıklama (Debug) ve canlı kaynak izleme:
     ```
     
 
-_(Not: Sistemin ilk kurulumunda `db-init` servisi PostgreSQL üzerinde gerekli `market_data` tablosunu ve TimescaleDB hypertable'ını otomatik olarak kuracaktır)._
-
-----------
+> **Not:** Sistemin ilk kurulumunda `db-init` servisi, PostgreSQL üzerinde gerekli TimescaleDB hiper-tablolarını ve şemalarını otomatik olarak kurgular.
 
 ## 📊 İzleme ve Analiz Panelleri (Servisler)
 
@@ -331,49 +294,55 @@ Sistem ayağa kalktıktan sonra aşağıdaki linklerden tüm ekosistemi yöneteb
 
 ----------
 
-## ⚡ Eklenen Yeni "Enterprise" Özellikler
 
-1.  **🧬 Generic Producer & Schema Agnostic Ingestion:** Eski sabit kodlu yapı terk edildi. Producer ve Kafka katmanı artık sadece taşıyıcıdır. Sistem JSON içindeki `data_type` etiketine göre veriyi tanır (Crypto, IoT, Log).
+## ⚡ "Enterprise-Grade" Yeni Özellikler
+
+Bu sürümle birlikte sistem, akademik bir projeden endüstriyel standartlarda bir **Data & MLOps Framework**'üne dönüştürülmüştür:
+
+-   **🏛️ Lambda Mimarisi (Batch + Speed Layer):** Sistem, saniyelik akan veriyi (Speed Layer) işlerken aynı zamanda 10 yıllık devasa geçmiş verileri (Batch Layer) analiz edebilecek hibrit bir yapıya kavuşturulmuştur.
     
-2.  **🗄️ Multi-Tenant Data Lake Storage:** MinIO üzerindeki Delta Lake dosyaları rastgele tutulmaz, kaynağına göre otomatik Partitioned (Bölümlenmiş) olarak saklanır (`source=binance`, vb.).
+-   **📦 Vektörel Toplu Çıkarım (Batch Inference):** Spark Streaming motoru, tahmin için API'ye her satır için ayrı istek atmak yerine verileri JSON paketleri halinde "koliyle" gönderir. Bu sayede Network I/O darboğazı giderilmiş ve RAM kullanımı **1 GB** seviyesinde sabitlenmiştir.
     
-3.  **🛡️ Otonom Bakım (Maintenance Job):** Streamlit yönetim panelinden "Delta Lake Bakım Motoru" çalıştırılarak S3 üzerindeki küçük parçalı dosyalar birleştirilir (Optimize) ve çöpler temizlenir (Vacuum).
-4.  -   **🏛️ Lambda Mimarisi (Batch + Speed Layer):** Sistem sadece saniyelik akan veriyi (Streaming) değil, aynı zamanda 10 yıllık devasa geçmiş veriyi de (Batch) yönetebilecek şekilde Lambda mimarisine yükseltilmiştir. 
+-   **⚡ Dual-Track UI (Fast Path / Slow Path):** Dashboard mimarisi ikiye bölünmüştür; anlık fiyatlar PostgreSQL'i pas geçerek doğrudan **Kafka'dan** milisaniyeler içinde okunurken, AI tahminleri ve teknik analizler DB'den 5 saniyelik cache ile beslenir.
     
-5.   **🦀 Rust Tabanlı ETL & Lakehouse Partitioning:** Geçmiş 10 yıllık borsa verileri (100.000+ satır), JVM/Spark maliyetine girilmeden doğrudan Rust tabanlı `deltalake` kütüphanesi ile çekilmiş ve MinIO (S3) üzerine `partition_by=["symbol", "year"]` mantığıyla (Yıl ve Sembol bazlı bölümlenerek) yazılmıştır.
+-   **🦀 Rust Tabanlı Delta Lake Ingestion:** 100.000+ satırlık geçmiş veriler, JVM maliyetine girilmeden doğrudan **Rust tabanlı `deltalake`** motoruyla MinIO'ya (S3) aktarılır. Veriler `symbol` ve `year` bazlı bölümlenerek (partitioned) depolanır.
     
-6.  **⚡ Predicate Pushdown ile Optimize UI:** Streamlit arayüzündeki "Geçmiş Veri Analizi" modülü, PostgreSQL'i (Operasyonel DB) kesinlikle yormaz. Kullanıcı bir sorgu attığında, S3 üzerindeki sadece ilgili yılın ve coinin klasörünü okuyarak (Predicate Pushdown) devasa veriyi milisaniyeler içinde RAM'e alır ve önbellekler (Caching).
-   
+-   **🎯 Predicate Pushdown Optimizasyonu:** Geçmiş analiz modülünde S3 üzerindeki tüm veri taranmaz; sorgu anında sadece ilgili yılın ve coinin klasörü okunarak (Pushdown) devasa veriler milisaniyeler içinde RAM'e alınır.
+    
+-   **🛡️ Otonom Bakım (DataOps):** Delta Lake üzerindeki küçük parçalı dosyaların birleştirilmesi (Optimize) ve atık verilerin temizlenmesi (Vacuum) işlemleri Streamlit yönetim panelinden tek tuşla tetiklenebilir.
     
 
 ----------
 
 ## 🤝 Katkıda Bulunun (Contributing)
 
-Bu proje bir **YBS öğrencisi** tarafından geliştirilmiş açık kaynaklı bir framework'tür. Her türlü katkıya, fikre ve PR'a açıktır.
+Bu proje bir **YBS öğrencisi** tarafından geliştirilmiş, kurumsal veri mimarilerini demokratikleştirmeyi hedefleyen açık kaynaklı bir framework'tür. Her türlü fikir, hata raporu ve PR (Pull Request) değerlidir.
 
 -   **Geliştirici:** Ömer Çakan
     
--   **LinkedIn:** [Ömer Çakan](https://www.google.com/search?q=https://www.linkedin.com/in/%25C3%25B6mer-%25C3%25A7akan-819751261)
+-   **LinkedIn:** [Ömer Çakan - Profil Linki](https://www.google.com/search?q=https://www.linkedin.com/in/%25C3%25B6mer-%25C3%25C3akan-819751261)
     
--   **Destek:** Proje size yardımcı olduysa depoya bir ⭐ bırakmayı unutmayın!
+-   **Destek:** Eğer bu altyapı size yardımcı olduysa depoya bir ⭐ bırakarak destek olabilirsiniz!
     
 
-### Katılımcılara Özel Kod Talimatı
+### 🛠️ Geliştirici Talimatları
 
-Kendi branch'inizi açın, ama `main` branch'ine dokunmayın:
+Kendi özelliklerinizi eklemek için aşağıdaki iş akışını takip edebilirsiniz:
 
-Bash
-
-```
-# Projeyi indirin
-git clone [https://github.com/propaper12/An-Open-Source-Real-Time-Financial-Lakehouse-Project.git](https://github.com/propaper12/An-Open-Source-Real-Time-Financial-Lakehouse-Project.git)
-
-# Kendi adınıza yeni bir branch açın
-git checkout -b dev/isminiz_ve_ozellik
-
-# Geliştirmenizi yapın ve pushlayın
-git push origin dev/isminiz_ve_ozellik
+1.  **Projeyi Forklayın:** Repository'yi kendi hesabınıza kopyalayın.
+    
+2.  **Branch Oluşturun:** `main` branch'ine dokunmadan yeni bir çalışma alanı açın:
+    
+    Bash
+    
+    ```
+    git checkout -b dev/isminiz_ve_ozellik
+    
+    ```
+    
+3.  **Test Edin:** Değişikliklerinizi `start_windows.bat` üzerindeki **[15] Canlı Logları İzle** ve **[4] Sağlık Durumu** seçenekleriyle mutlaka test edin.
+    
+4.  **Push ve PR:** Geliştirmenizi pushlayın ve bir Pull Request oluşturun.
 
 ```
 ## 🤝 Projenin görselleri:
