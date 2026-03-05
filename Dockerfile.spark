@@ -1,11 +1,11 @@
 FROM python:3.9-bullseye
 
-# 1. Java ve Temel Sistem Kütüphaneleri (Sadece Spark İçin)
+# 1. Java, Temel Sistem Kütüphaneleri ve LightGBM için libgomp1
 RUN apt-get update && \
-    apt-get install -y openjdk-11-jre-headless wget curl procps && \
+    apt-get install -y openjdk-11-jre-headless wget curl procps libgomp1 && \
     apt-get clean;
 
-# 2. Sadece Veri İşleme, Streaming ve ML Bağımlılıkları
+# 2. Sadece Veri İşleme, Streaming ve ML Bağımlılıkları (XGBoost & LightGBM eklendi)
 RUN pip install --no-cache-dir \
     pyspark==3.4.1 \
     delta-spark==2.4.0 \
@@ -19,8 +19,10 @@ RUN pip install --no-cache-dir \
     psycopg2-binary \
     mlflow \
     scikit-learn \
-    python-dotenv\
-    yfinance
+    python-dotenv \
+    yfinance \
+    xgboost \
+    lightgbm
 
 # 3. JAR DOSYALARI (Kafka, S3, Delta ve Postgres Bağlantıları)
 RUN mkdir -p /opt/spark-jars

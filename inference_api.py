@@ -34,15 +34,14 @@ def load_model(symbol: str):
     
     model_name = f"model_{symbol}"
     try:
-        print(f"🔄 MLflow'dan {model_name} (Production) indiriliyor...")
-        # Doğrudan Production etiketli versiyonu indir!
+        print(f" MLflow'dan {model_name} (Production) indiriliyor...")
         model_uri = f"models:/{model_name}/Production"
         model = mlflow.sklearn.load_model(model_uri)
         model_cache[symbol] = model
-        print(f"✅ {model_name} RAM'e yüklendi!")
+        print(f" {model_name} RAM'e yüklendi!")
         return model
     except Exception as e:
-        print(f"⚠️ Model bulunamadı ({symbol}): {e}")
+        print(f" Model bulunamadı ({symbol}): {e}")
         return None
 
 @app.post("/predict")
@@ -51,10 +50,8 @@ async def predict_price(payload: FeaturePayload):
     model = load_model(payload.symbol)
     
     if not model:
-        # Eğer model henüz eğitilmemişse, güvenli bir şekilde 0 veya hata dön.
         raise HTTPException(status_code=404, detail=f"{payload.symbol} için Production modeli bulunamadı. Lütfen önce modeli eğitin.")
     
-    # Gelen veriyi Scikit-Learn'ün anladığı formata (DataFrame) çevir
     features_df = pd.DataFrame([{
         "volatility": payload.volatility,
         "lag_1": payload.lag_1,
@@ -66,11 +63,10 @@ async def predict_price(payload: FeaturePayload):
     }])
     
     try:
-        # TAHMİNİ YAP (Milisaniyeler sürer)
         prediction = model.predict(features_df)[0]
         return {
             "symbol": payload.symbol,
-            "predicted_price": round(float(prediction), 2)
+            "predicted_price": round(float(prediction), 5) # 5 Basamaklı Kripto Çözünürlüğü eklendi
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Tahmin hatası: {str(e)}")
@@ -83,5 +79,5 @@ async def health_check():
 async def reload_models():
     """Dışarıdan (ml_watcher) gelen tetiklemeyle RAM'deki eski modelleri temizler."""
     model_cache.clear()
-    print("🔄 Cache temizlendi! Yeni istek geldiğinde modeller MLflow'dan taze olarak indirilecek.")
+    print("Cache temizlendi! Yeni istek geldiğinde modeller MLflow'dan taze olarak indirilecek.")
     return {"status": "success", "message": "Model cache cleared. Ready for fresh load."}

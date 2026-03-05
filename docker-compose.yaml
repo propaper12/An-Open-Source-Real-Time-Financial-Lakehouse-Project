@@ -214,61 +214,61 @@ services:
           memory: 256m
 
   # 12. CADVISOR
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    ports:
-      - "8090:8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    networks:
-      - data-network
-    deploy:
-      resources:
-        limits:
-          memory: 256m
+  #cadvisor:
+   # image: gcr.io/cadvisor/cadvisor:latest
+    #container_name: cadvisor
+    #ports:
+     # - "8090:8080"
+    #volumes:
+     # - /:/rootfs:ro
+      #- /var/run:/var/run:ro
+      #- /sys:/sys:ro
+      #- /var/lib/docker/:/var/lib/docker:ro
+      #- /dev/disk/:/dev/disk:ro
+    #networks:
+     # - data-network
+    #deploy:
+     # resources:
+      #  limits:
+       #   memory: 256m
 
   # 13. PROMETHEUS
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    depends_on:
-      - cadvisor
-    networks:
-      - data-network
-    deploy:
-      resources:
-        limits:
-          memory: 512m
+  #prometheus:
+   # image: prom/prometheus:latest
+    #container_name: prometheus
+    #ports:
+     # - "9090:9090"
+    #volumes:
+     # - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    #command:
+     # - '--config.file=/etc/prometheus/prometheus.yml'
+    #depends_on:
+     # - cadvisor
+    #networks:
+     # - data-network
+    #deploy:
+     # resources:
+      #  limits:
+       #   memory: 512m
 
   # 14. GRAFANA
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3001:3000"
-    env_file: 
-      - .env
-    depends_on:
-      - prometheus
-    networks:
-      - data-network
-    volumes:
-      - grafana_data:/var/lib/grafana
-    deploy:
-      resources:
-        limits:
-          memory: 256m
+  #grafana:
+   # image: grafana/grafana:latest
+    #container_name: grafana
+    #ports:
+     # - "3001:3000"
+    #env_file: 
+     # - .env
+    #depends_on:
+     # - prometheus
+    #networks:
+     # - data-network
+    #volumes:
+     # - grafana_data:/var/lib/grafana
+    #deploy:
+     # resources:
+      #  limits:
+       #   memory: 256m
   
   # 15. MLFLOW SERVER
   mlflow:
@@ -376,6 +376,9 @@ services:
           average_price DOUBLE PRECISION,
           predicted_price DOUBLE PRECISION,
           volatility DOUBLE PRECISION,
+          volume_usd DOUBLE PRECISION,    
+          is_buyer_maker BOOLEAN,
+          trade_side VARCHAR(10),          
           processed_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       -- Eğer eklenti kuruluysa ve hypertable oluşturulmadıysa oluştur.
@@ -387,7 +390,6 @@ services:
       resources:
         limits:
           memory: 128m
-
 networks:
   data-network:
     driver: bridge

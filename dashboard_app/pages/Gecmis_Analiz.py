@@ -35,27 +35,22 @@ storage_options = {
 # --- 3. TEKNİK İNDİKATÖR MOTORU ---
 def add_indicators(df):
     df = df.copy()
-    # Getiri
     df['returns'] = df['close'].pct_change()
     
-    # Hareketli Ortalamalar
     df['MA7'] = df['close'].rolling(window=7).mean()
     df['MA25'] = df['close'].rolling(window=25).mean()
     df['MA99'] = df['close'].rolling(window=99).mean()
     
-    # RSI
     delta = df['close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     df['RSI'] = 100 - (100 / (1 + (gain / loss)))
     
-    # Bollinger Bantları
     df['BB_mid'] = df['close'].rolling(window=20).mean()
     df['BB_std'] = df['close'].rolling(window=20).std()
     df['BB_upper'] = df['BB_mid'] + (df['BB_std'] * 2)
     df['BB_lower'] = df['BB_mid'] - (df['BB_std'] * 2)
     
-    # MACD
     exp1 = df['close'].ewm(span=12, adjust=False).mean()
     exp2 = df['close'].ewm(span=26, adjust=False).mean()
     df['MACD'] = exp1 - exp2
@@ -64,20 +59,28 @@ def add_indicators(df):
     
     return df
 
-# --- 4. VERİ ÇEKME (CACHE) ---
+# --- 4. VERİ ÇEKME (CACHE) - GÜNCELLENDİ ---
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_full_batch_data(interval):
-    path = "s3://market-data/historical_daily_delta" if interval == "Günlük" else "s3://market-data/historical_hourly_delta"
+    paths = {
+        "Günlük": "s3://market-data/historical_daily_delta",
+        "Saatlik": "s3://market-data/historical_hourly_delta",
+        "15 Dakikalık": "s3://market-data/historical_15m_delta",
+        "5 Dakikalık": "s3://market-data/historical_5m_delta"
+    }
+    
+    path = paths.get(interval, "s3://market-data/historical_daily_delta")
+    
     try:
         dt = DeltaTable(path, storage_options=storage_options)
         return dt.to_pandas()
     except Exception as e:
         return pd.DataFrame()
 
-# --- 5. YAN PANEL (SIDEBAR) ---
+# --- 5. YAN PANEL (SIDEBAR) - GÜNCELLENDİ ---
 with st.sidebar:
     st.header("⚙️ Veri Seti Ayarları")
-    time_interval = st.radio("Zaman Periyodu", ["Günlük", "Saatlik"])
+    time_interval = st.radio("Zaman Periyodu", ["Günlük", "Saatlik", "15 Dakikalık", "5 Dakikalık"])
     all_data = load_full_batch_data(time_interval)
     
     if not all_data.empty:
@@ -85,7 +88,7 @@ with st.sidebar:
         selected_coin = st.selectbox("İncelenecek Varlık", coin_list)
         df_target = all_data[all_data['symbol'] == selected_coin].copy()
     else:
-        st.error("MinIO bağlantısı veya Delta tablosu bulunamadı.")
+        st.error(f"{time_interval} tablosu bulunamadı. Lütfen ETL scriptini çalıştırın.")
         st.stop()
         
     st.divider()
@@ -100,7 +103,7 @@ df_target = add_indicators(df_target).dropna()
 st.title(f"🔍 {selected_coin} Kantitatif Analiz Terminali")
 
 c1, c2, c3, c4 = st.columns(4)
-c1.markdown(f"<div class='metric-card'><div class='metric-label'>Kapanış Fiyatı</div><div class='metric-value'>${df_target['close'].iloc[-1]:,.2f}</div></div>", unsafe_allow_html=True)
+c1.markdown(f"<div class='metric-card'><div class='metric-label'>Kapanış Fiyatı</div><div class='metric-value'>${df_target['close'].iloc[-1]:,.5f}</div></div>", unsafe_allow_html=True)
 c2.markdown(f"<div class='metric-card'><div class='metric-label'>RSI Momentum</div><div class='metric-value'>{df_target['RSI'].iloc[-1]:.2f}</div></div>", unsafe_allow_html=True)
 c3.markdown(f"<div class='metric-card'><div class='metric-label'>Son Hacim</div><div class='metric-value'>${df_target['volume'].iloc[-1]/1e3:.1f}K</div></div>", unsafe_allow_html=True)
 c4.markdown(f"<div class='metric-card'><div class='metric-label'>Uzun Vade Trend</div><div class='metric-value' style='color:{'#0ecb81' if df_target['close'].iloc[-1] > df_target['MA99'].iloc[-1] else '#f6465d'};'>{'BOĞA 🟢' if df_target['close'].iloc[-1] > df_target['MA99'].iloc[-1] else 'AYI 🔴'}</div></div>", unsafe_allow_html=True)
@@ -113,12 +116,9 @@ st.write("")
 st.subheader("📊 1. Fiyat Hareketi, Trend ve Volatilite Bantları")
 fig_price = go.Figure()
 
-# Mum Grafiği
 fig_price.add_trace(go.Candlestick(x=df_target['timestamp'], open=df_target['open'], high=df_target['high'], low=df_target['low'], close=df_target['close'], name='OHLC', increasing_line_color='#0ecb81', decreasing_line_color='#f6465d'))
-# Bollinger Bantları
 fig_price.add_trace(go.Scatter(x=df_target['timestamp'], y=df_target['BB_upper'], line=dict(color='rgba(132, 142, 156, 0.4)'), name='BB Üst Direnç'))
 fig_price.add_trace(go.Scatter(x=df_target['timestamp'], y=df_target['BB_lower'], line=dict(color='rgba(132, 142, 156, 0.4)'), fill='tonexty', fillcolor='rgba(132, 142, 156, 0.05)', name='BB Alt Destek'))
-# Hareketli Ortalamalar
 fig_price.add_trace(go.Scatter(x=df_target['timestamp'], y=df_target['MA7'], line=dict(color='#fcd535', width=1.5), name='MA7 (Hızlı Trend)'))
 fig_price.add_trace(go.Scatter(x=df_target['timestamp'], y=df_target['MA99'], line=dict(color='#3498db', width=2), name='MA99 (Ana Trend)'))
 

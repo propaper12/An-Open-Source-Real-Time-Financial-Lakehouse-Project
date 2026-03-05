@@ -67,7 +67,17 @@ def process_data_to_ohlc(df, interval='5s'):
     df['processed_time'] = pd.to_datetime(df['processed_time'])
     df.set_index('processed_time', inplace=True)
     ohlc = df['average_price'].resample(interval).ohlc()
-    indicators = df[['predicted_price', 'Bollinger_Upper', 'Bollinger_Lower', 'MACD', 'Signal_Line', 'RSI', 'volatility', 'SMA_20']].resample(interval).last()
+    
+    # Premium Verilerin Çökmemesi İçin Güvenlik Kontrolü
+    base_cols = ['predicted_price', 'Bollinger_Upper', 'Bollinger_Lower', 'MACD', 'Signal_Line', 'RSI', 'volatility', 'SMA_20']
+    premium_cols = [c for c in ['trade_side', 'is_buyer_maker'] if c in df.columns]
+    
+    indicators = df[base_cols + premium_cols].resample(interval).last()
+    
+    # Yeni Hacim (Volume) Verisini Toplama (Sum)
+    if 'volume_usd' in df.columns:
+        ohlc['volume_usd_sum'] = df['volume_usd'].resample(interval).sum()
+        
     return pd.concat([ohlc, indicators], axis=1).dropna().reset_index()
 
 # ==========================================
@@ -135,7 +145,6 @@ if not df_raw.empty:
     if st.session_state['selected_coin'] not in available_symbols:
         st.session_state['selected_coin'] = available_symbols[0]
     
-    # HİZALAMA DÜZELTİLDİ: Sol tarafta kocaman Selectbox, sağ tarafta Canlı Saat
     c_head1, c_head2 = st.columns([1, 1])
     with c_head1:
         selected_sym = st.selectbox("🪙 İZLENEN VARLIK", available_symbols, index=available_symbols.index(st.session_state['selected_coin']))
@@ -154,11 +163,11 @@ if not df_raw.empty:
         live_price = get_live_price(selected_sym)
         display_price = live_price if live_price else last_raw['average_price']
         
-        # --- ÜST METRİKLER ---
+        # --- ÜST METRİKLER (ORİJİNAL) ---
         st.write("") 
         k1, k2, k3, k4 = st.columns(4)
-        k1.metric("💰 Anlık Fiyat (Kafka)", f"{display_price:,.2f} $")
-        k2.metric("🤖 Yapay Zeka Hedefi", f"{last_raw['predicted_price']:,.2f} $", f"{last_raw['predicted_price'] - display_price:+.2f} $")
+        k1.metric("💰 Anlık Fiyat (Kafka)", f"{display_price:,.5f} $")
+        k2.metric("🤖 Yapay Zeka Hedefi", f"{last_raw['predicted_price']:,.5f} $", f"{last_raw['predicted_price'] - display_price:+.5f} $")
         
         signal = "AL 🟢" if last_raw['predicted_price'] > display_price else "SAT 🔴"
         k3.metric("🎯 Sistem Sinyali", signal)
@@ -167,10 +176,25 @@ if not df_raw.empty:
         rsi_state = "Aşırı Alım" if rsi_val > 70 else "Aşırı Satım" if rsi_val < 30 else "Nötr"
         k4.metric("📊 RSI (14)", f"{rsi_val:.1f}", rsi_state)
 
+        # --- YENİ PREMIUM METRİKLER (ORİJİNAL TASARIMA UYGUN) ---
+        if 'volume_usd' in df_filtered.columns:
+            st.write("")
+            p1, p2, p3 = st.columns(3)
+            vol_usd = last_raw.get('volume_usd', 0)
+            p1.metric("🌊 Son İşlem Hacmi (USD)", f"${vol_usd:,.0f}")
+
+            side_val = last_raw.get('trade_side', 'N/A')
+            side_color = "🟢 ALICI (BUY)" if side_val == 'BUY' else "🔴 SATICI (SELL)" if side_val == 'SELL' else "⚪ NÖTR"
+            p2.metric("⚖️ Son İşlem Yönü", side_color)
+
+            is_maker = last_raw.get('is_buyer_maker', False)
+            maker_text = "Satıcı Agresif" if is_maker else "Alıcı Agresif"
+            p3.metric("🔥 Piyasa Baskısı", maker_text)
+
         st.divider()
 
         # ==========================================
-        # 8. ANA FİYAT GRAFİĞİ VE YORUMU (FULL WİDTH)
+        # 8. ANA FİYAT GRAFİĞİ VE YORUMU (ORİJİNAL)
         # ==========================================
         st.markdown(f"<h3 style='color: #eaecef;'>Fiyat ve Bollinger Bantları ({interval_choice})</h3>", unsafe_allow_html=True)
         if not df_ohlc.empty:
@@ -213,7 +237,6 @@ if not df_raw.empty:
                 fig_macd.update_layout(template="plotly_dark", height=250, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', showlegend=False)
                 st.plotly_chart(fig_macd, use_container_width=True)
                 
-                # MACD CANLI YORUM KUTUSU
                 macd_val = macd_hist.iloc[-1]
                 macd_comment = "MACD histogramı <span class='highlight-up'>pozitif</span> bölgede, alıcılar güçleniyor." if macd_val > 0 else "MACD histogramı <span class='highlight-down'>negatif</span> bölgede, satıcılar baskın."
                 st.markdown(f"<div class='analysis-box'><b>📊 MACD Stratejisi:</b><br>{macd_comment}</div>", unsafe_allow_html=True)
@@ -227,22 +250,39 @@ if not df_raw.empty:
                 fig_rsi.update_layout(template="plotly_dark", height=250, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', yaxis=dict(range=[0, 100]))
                 st.plotly_chart(fig_rsi, use_container_width=True)
                 
-                # RSI CANLI YORUM KUTUSU
                 rsi_comment = "Fiyat <span class='highlight-down'>aşırı alım (Overbought)</span> bölgesinde. Düzeltme riski masada." if rsi_val > 70 else "Fiyat <span class='highlight-up'>aşırı satım (Oversold)</span> bölgesinde. Dip arayışı olabilir." if rsi_val < 30 else "Piyasa şu an nötr dengede, ekstrem bir alım/satım baskısı yok."
                 st.markdown(f"<div class='analysis-box'><b>🌊 RSI Değerlendirmesi:</b><br>Mevcut RSI: <b>{rsi_val:.1f}</b>. {rsi_comment}</div>", unsafe_allow_html=True)
 
         # ==========================================
-        # 10. POSTGRESQL HAM VERİ TABLOSU
+        # 10. YENİ EKLENEN: HACİM (VOLUME) GRAFİĞİ VE YORUMU
+        # ==========================================
+        if 'volume_usd_sum' in df_ohlc.columns and not df_ohlc.empty:
+            st.markdown("<h4 style='color: #848E9C;'>İşlem Hacmi (Volume USD)</h4>", unsafe_allow_html=True)
+            fig_vol = go.Figure()
+            colors = ['#0ecb81' if row['close'] >= row['open'] else '#f6465d' for index, row in df_ohlc.iterrows()]
+            fig_vol.add_trace(go.Bar(x=df_ohlc['processed_time'], y=df_ohlc['volume_usd_sum'], marker_color=colors))
+            fig_vol.update_layout(template="plotly_dark", height=250, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', showlegend=False)
+            st.plotly_chart(fig_vol, use_container_width=True)
+
+            last_vol = df_ohlc['volume_usd_sum'].iloc[-1]
+            trade_side = last_raw.get('trade_side', 'Bilinmiyor')
+            vol_trend = "alıcıların kontrolünde" if trade_side == 'BUY' else "satıcıların kontrolünde"
+            vol_comment = f"Son periyotta piyasada <b>${last_vol:,.0f}</b> hacim döndü. Ağırlıklı emir akışı <span class='highlight-{'up' if trade_side == 'BUY' else 'down'}'>{vol_trend}</span> ilerliyor."
+            st.markdown(f"<div class='analysis-box'><b>🔥 Hacim ve Emir Akışı (Order Flow) Analizi:</b><br>{vol_comment}</div>", unsafe_allow_html=True)
+
+        # ==========================================
+        # 11. POSTGRESQL HAM VERİ TABLOSU
         # ==========================================
         st.divider()
         st.subheader("📋 PostgreSQL Veri Katmanı (Son 10 İşlem Kaydı)")
         
-        display_cols = ['processed_time', 'symbol', 'average_price', 'predicted_price', 'volatility', 'RSI', 'MACD', 'Bollinger_Upper', 'Bollinger_Lower']
+        display_cols = ['processed_time', 'symbol', 'average_price', 'predicted_price', 'trade_side', 'is_buyer_maker', 'volume_usd', 'volatility', 'RSI', 'MACD', 'Bollinger_Upper', 'Bollinger_Lower']
         available_cols = [c for c in display_cols if c in df_filtered.columns]
         
         st.dataframe(
             df_filtered[available_cols].sort_values('processed_time', ascending=False).head(10).style.format({
-                'average_price': '{:.2f}', 'predicted_price': '{:.2f}', 'volatility': '{:.4f}', 
+                'average_price': '{:.5f}', 'predicted_price': '{:.5f}', 'volatility': '{:.4f}', 
+                'volume_usd': '${:,.2f}',
                 'RSI': '{:.2f}', 'MACD': '{:.4f}', 'Bollinger_Upper': '{:.2f}', 'Bollinger_Lower': '{:.2f}'
             }), 
             use_container_width=True,
@@ -250,7 +290,7 @@ if not df_raw.empty:
         )
 
 # ==========================================
-# 11. SAYAÇ YÖNETİMİ VE RERUN (LOOP)
+# 12. SAYAÇ YÖNETİMİ VE RERUN (LOOP)
 # ==========================================
 time.sleep(1)
 st.session_state['refresh_counter'] -= 1

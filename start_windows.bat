@@ -6,17 +6,17 @@ chcp 65001 >nul
 :: Dosyanin calistigi dizini her ihtimale karsi ana dizine sabitler
 cd /d "%~dp0"
 
-:: --- 1. WSL RAM OPTIMIZASYONU ---
+:: --- 1. WSL ULTRA-LITE TEST AYARLARI (4GB RAM + 4GB SWAP) ---
 set WSL_CONFIG="%USERPROFILE%\.wslconfig"
-if not exist %WSL_CONFIG% (
-    echo [ ⚙️ PROCESS ] Sisteminiz icin optimum RAM ayarlari yapiliyor...
-    echo [wsl2] > %WSL_CONFIG%
-    echo memory=8GB >> %WSL_CONFIG%
-    echo processors=4 >> %WSL_CONFIG%
-    echo swap=2GB >> %WSL_CONFIG%
-    wsl --shutdown
-    timeout /t 3 >nul
-)
+echo [ ⚙️ PROCESS ] 6GB RAM ve 4GB M2-Swap limitleri uygulaniyor...
+echo [wsl2] > %WSL_CONFIG%
+echo memory=6GB >> %WSL_CONFIG%
+echo processors=2 >> %WSL_CONFIG%
+echo swap=4GB >> %WSL_CONFIG%
+echo autoMemoryReclaim=dropcache >> %WSL_CONFIG%
+echo [ 🟢 OK ] Limitler ayarlandi. WSL yeniden baslatiliyor...
+wsl --shutdown
+timeout /t 5 >nul
 
 :MENU
 cls

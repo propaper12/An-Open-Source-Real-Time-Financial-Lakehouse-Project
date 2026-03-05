@@ -2,7 +2,7 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Sadece API, Kafka ve İstek kütüphaneleri (Eksiksiz)
+# API, Kafka, ML ve İstek kütüphaneleri (XGBoost ve LightGBM eklendi)
 RUN pip install --no-cache-dir \
     fastapi \
     uvicorn \
@@ -12,7 +12,9 @@ RUN pip install --no-cache-dir \
     pandas \
     scikit-learn \
     mlflow \
-    boto3
+    boto3 \
+    xgboost \
+    lightgbm
 
 # API Dosyaları
 COPY ingestion_api.py .

@@ -41,7 +41,7 @@ async def ingest_data(request: Request):
     """
     Harici sistemlerin verilerini asenkron olarak iletebileceği RESTful uç noktası.
     Gelen veriler üzerinde şema doğrulaması yaparak, hatalı verilerin 
-    下游 (downstream) süreçlere (Spark/Lakehouse) sızmasını engelledim.
+    (downstream) süreçlere (Spark/Lakehouse) sızmasını engelledim.
     """
     data = await request.json()
 
