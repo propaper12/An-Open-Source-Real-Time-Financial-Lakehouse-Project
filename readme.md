@@ -54,7 +54,37 @@ Sistem, hem VIP hem de FREE kullanıcılar için optimize edilmiş bir **API Gat
 
 Kullanıcı arayüzü sadece bir web sitesi değil, bir ekosistemdir. **Streamlit** ile kurumsal yönetim paneli ve altyapı izleme süreçleri yönetilirken, **Electron** tabanlı masaüstü uygulaması profesyonel trader'lar için düşük gecikmeli bir masaüstü deneyimi sunar. 
 Pro Terminal, HFT (High Frequency Trading) verilerini milisaniyelik hassasiyetle görselleştirir.
+
+#### 🛡️ Redis - Distributed Control Plane & Security Layer
+
+Sistemde **Redis**, sadece bir önbellek (cache) olarak değil; API katmanında güvenliği, hız sınırlamasını (rate limiting) ve kullanıcı yetkilendirmesini yöneten bir **"Merkezi Kontrol Düzlemi"** olarak konumlandırılmıştır.
+
+### ⚙️ Temel Özellikler ve Mimari Çözümler
+
+-   **Dağıtık Hız Sınırlama (Distributed Rate Limiting):** API Gateway'in yatayda ölçeklenebilir (multi-node) yapısı nedeniyle, kullanıcı istek sayıları yerel bellekte değil, Redis üzerinde **Atomic Counters** kullanılarak takip edilir. Bu sayede kullanıcı, farklı API sunucularına istek atsa dahi toplam limiti (saniyede 5 istek) senkronize bir şekilde korunur.
+    
+-   **Otonom Ban Mekanizması (Automatic Blacklisting):** Ücretsiz (FREE) katmandaki kullanıcılar için günlük **3 istek** sınırı belirlenmiştir. Redis, bu sınırı aşan API anahtarlarını anında tespit eder ve merkezi bir **Blacklist** (Kara Liste) oluşturarak kullanıcıyı kalıcı olarak sistemden uzaklaştırır.
+    
+-   **Tier-Based Access Control (DaaS Logic):** * **VIP Tier:** Gerçek zamanlı (WebSocket), sınırsız ve tahmin (ML) verisi içeren erişim.
+    
+    -   **FREE Tier:** 5 dakika gecikmeli, kısıtlı veri seti (Symbol, Price, Time) ve kotalı erişim.
+        
+-   **Düşük Gecikmeli Doğrulama (Ultra-Low Latency):** Her API isteğinde ana veritabanına (Postgres) yük bindirmek yerine, yetki ve limit kontrolleri Redis üzerinden **RAM hızında (<1ms)** gerçekleştirilir.
+    
+
+### 🧠 Neden Redis? (Mimari Tercih)
+
+Bir Data Engineer olarak, sistemin **stateless** (durumsuz) olması gerektiğini savundum. Eğer limit bilgilerini API'nin kendi içinde tutsaydım, sunucu çöktüğünde veya yenisi açıldığında tüm kullanıcı hakları sıfırlanırdı. Redis kullanımıyla:
+
+1.  **High Availability (Yüksek Erişilebilirlik):** API sunucuları değişse bile sistem hafızası korunur.
+    
+2.  **Consistency (Tutarlılık):** Tüm ağ genelinde tek bir "doğruluk kaynağı" (Source of Truth) oluşturulur.
+    
+3.  **Database Protection:** Ana veritabanı (Postgres), gereksiz "limit kontrol" sorgularından arındırılarak sadece operasyonel veriye odaklanması sağlanır.
+
 <img width="2816" height="1536" alt="Architecture" src="https://github.com/user-attachments/assets/0d3cabf3-f35d-4d77-ad85-a01477a16265" />
+
+
 
 ---
 
