@@ -213,7 +213,7 @@ services:
         limits:
           memory: 256m
 
-  # 12. CADVISOR
+  # 12. CADVISOR (Konteyner Kaynak İzleyici)
   #cadvisor:
    # image: gcr.io/cadvisor/cadvisor:latest
     #container_name: cadvisor
@@ -221,18 +221,13 @@ services:
      # - "8090:8080"
     #volumes:
      # - /:/rootfs:ro
-      #- /var/run:/var/run:ro
-      #- /sys:/sys:ro
-      #- /var/lib/docker/:/var/lib/docker:ro
-      #- /dev/disk/:/dev/disk:ro
+     # - /var/run:/var/run:ro
+     # - /sys:/sys:ro
+     # - /var/lib/docker/:/var/lib/docker:ro
+     # - /dev/disk/:/dev/disk:ro
     #networks:
      # - data-network
-    #deploy:
-     # resources:
-      #  limits:
-       #   memory: 256m
-
-  # 13. PROMETHEUS
+  # 13. PROMETHEUS (Metrik Veritabanı)
   #prometheus:
    # image: prom/prometheus:latest
     #container_name: prometheus
@@ -242,6 +237,7 @@ services:
      # - ./prometheus.yml:/etc/prometheus/prometheus.yml
     #command:
      # - '--config.file=/etc/prometheus/prometheus.yml'
+      #- '--storage.tsdb.retention.time=2h' # Sadece son 2 saati tut, RAM'i koru!
     #depends_on:
      # - cadvisor
     #networks:
@@ -249,16 +245,14 @@ services:
     #deploy:
      # resources:
       #  limits:
-       #   memory: 512m
+       #   memory: 250M # 512m çoktu, 250m yeterli
 
-  # 14. GRAFANA
+  # 14. GRAFANA (Görselleştirme Paneli)
   #grafana:
    # image: grafana/grafana:latest
     #container_name: grafana
     #ports:
      # - "3001:3000"
-    #env_file: 
-     # - .env
     #depends_on:
      # - prometheus
     #networks:
@@ -268,8 +262,7 @@ services:
     #deploy:
      # resources:
       #  limits:
-       #   memory: 256m
-  
+       #   memory: 200M # Optimize edildi
   # 15. MLFLOW SERVER
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.11.3
@@ -292,21 +285,6 @@ services:
         limits:
           memory: 512m
 
-  # 16. METABASE
-  #metabase:
-   # image: metabase/metabase:latest
-    #container_name: metabase
-    #ports:
-     # - "3005:3000"
-    #env_file: 
-     # - .env
-    #networks:
-     # - data-network
-    #restart: always
-    #deploy:
-     # resources:
-      #  limits:
-       #   memory: 1g
 
   # 17. ADMINER (Sadece Local Test İçin)
   adminer:
@@ -370,7 +348,7 @@ services:
       sh -c "
       echo 'Postgres bekleniyor...';
       sleep 15;
-      psql -h postgres -U admin_lakehouse -d market_db -c '
+      psql -h postgres -U admin_lakehouse -d market_db -c \"
       CREATE TABLE IF NOT EXISTS market_data (
           symbol VARCHAR(20),
           average_price DOUBLE PRECISION,
@@ -379,17 +357,37 @@ services:
           volume_usd DOUBLE PRECISION,    
           is_buyer_maker BOOLEAN,
           trade_side VARCHAR(10),          
-          processed_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          processed_time TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-      -- Eğer eklenti kuruluysa ve hypertable oluşturulmadıysa oluştur.
       CREATE EXTENSION IF NOT EXISTS timescaledb;
-      SELECT create_hypertable(''market_data'', ''processed_time'', if_not_exists => TRUE);
-      ' && echo 'Tablo ve Hypertable basariyla kuruldu!';
+      SELECT create_hypertable('market_data', 'processed_time', if_not_exists => TRUE, migrate_data => TRUE);
+      
+      CREATE TABLE IF NOT EXISTS api_users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(50) UNIQUE NOT NULL,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          api_key VARCHAR(64) UNIQUE NOT NULL,
+          tier VARCHAR(20) DEFAULT 'FREE',
+          password_hash VARCHAR(256),
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      \" && echo 'Tablolar ve Hypertable basariyla kuruldu!';
       "
     deploy:
       resources:
         limits:
           memory: 128m
+    # 20. REDIS (Distributed Cache & Rate Limiting)
+  redis:
+    image: redis:alpine
+    container_name: redis_cache
+    ports: ["6379:6379"]
+    networks: [data-network]
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
 networks:
   data-network:
     driver: bridge

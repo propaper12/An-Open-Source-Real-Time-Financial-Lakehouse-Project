@@ -27,7 +27,9 @@ RUN pip install --no-cache-dir \
     python-dotenv\
     kafka-python\
     deltalake\
-    graphviz
+    graphviz\
+    redis
+    
 
 COPY . /app/
 

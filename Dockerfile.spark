@@ -22,8 +22,8 @@ RUN pip install --no-cache-dir \
     python-dotenv \
     yfinance \
     xgboost \
-    lightgbm
-
+    lightgbm\
+    redis
 # 3. JAR DOSYALARI (Kafka, S3, Delta ve Postgres Bağlantıları)
 RUN mkdir -p /opt/spark-jars
 WORKDIR /opt/spark-jars

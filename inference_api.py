@@ -3,8 +3,10 @@ from pydantic import BaseModel
 import mlflow.sklearn
 import os
 import pandas as pd
+import asyncio
+import redis.asyncio as aioredis
 
-app = FastAPI(title="MLOps Inference API", description="Real-time Crypto Price Prediction")
+app = FastAPI(title="MLOps Inference API", description="Real-time Crypto Price Prediction with Pub/Sub")
 
 # MLflow Ayarları
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow_server:5000")
@@ -14,8 +16,31 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("MINIO_ROOT_PASSWORD", "admin123
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
-# Modeli RAM'de tutacağımız global değişken (Singleton Pattern)
+# Modeli RAM'de tutacağımız global değişken
 model_cache = {}
+
+# --- REDIS PUB/SUB DİNLEYİCİSİ ---
+async def redis_listener():
+    """Tüm worker'lar arka planda bu kanalı dinler. Anons gelirse herkes kendi cache'ini siler."""
+    try:
+        r = aioredis.from_url(f"redis://{os.getenv('REDIS_HOST', 'redis')}:6379")
+        pubsub = r.pubsub()
+        await pubsub.subscribe("model_updates")
+        print("🎧 Redis Pub/Sub 'model_updates' kanalı dinleniyor...")
+        
+        async for message in pubsub.listen():
+            if message['type'] == 'message':
+                command = message['data'].decode('utf-8')
+                if command == "RELOAD_MODELS":
+                    model_cache.clear()
+                    print("🚨 [MULTI-WORKER SYNC]: Yeni model saptandı. Local RAM Cache temizlendi!")
+    except Exception as e:
+        print(f"Redis Dinleyici Hatası: {e}")
+
+@app.on_event("startup")
+async def startup_event():
+    # API ayağa kalkarken arka planda Redis dinleyiciyi başlat
+    asyncio.create_task(redis_listener())
 
 class FeaturePayload(BaseModel):
     symbol: str
@@ -28,7 +53,7 @@ class FeaturePayload(BaseModel):
     volatility_change: float
 
 def load_model(symbol: str):
-    """MLflow'dan Production modelini çeker ve RAM'e yükler (Sadece 1 kere çalışır)"""
+    """MLflow'dan Production modelini çeker ve RAM'e yükler"""
     if symbol in model_cache:
         return model_cache[symbol]
     
@@ -50,7 +75,7 @@ async def predict_price(payload: FeaturePayload):
     model = load_model(payload.symbol)
     
     if not model:
-        raise HTTPException(status_code=404, detail=f"{payload.symbol} için Production modeli bulunamadı. Lütfen önce modeli eğitin.")
+        raise HTTPException(status_code=404, detail=f"{payload.symbol} için Production modeli bulunamadı.")
     
     features_df = pd.DataFrame([{
         "volatility": payload.volatility,
@@ -66,7 +91,7 @@ async def predict_price(payload: FeaturePayload):
         prediction = model.predict(features_df)[0]
         return {
             "symbol": payload.symbol,
-            "predicted_price": round(float(prediction), 5) # 5 Basamaklı Kripto Çözünürlüğü eklendi
+            "predicted_price": round(float(prediction), 5)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Tahmin hatası: {str(e)}")
@@ -74,10 +99,3 @@ async def predict_price(payload: FeaturePayload):
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "loaded_models": list(model_cache.keys())}
-
-@app.post("/reload")
-async def reload_models():
-    """Dışarıdan (ml_watcher) gelen tetiklemeyle RAM'deki eski modelleri temizler."""
-    model_cache.clear()
-    print("Cache temizlendi! Yeni istek geldiğinde modeller MLflow'dan taze olarak indirilecek.")
-    return {"status": "success", "message": "Model cache cleared. Ready for fresh load."}

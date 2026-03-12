@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 # ==========================================
 # 0. SAYFA KONFİGÜRASYONU
 # ==========================================
-st.set_page_config(page_title="Enterprise Trading Terminal", layout="wide", page_icon="📈")
+st.set_page_config(page_title="Enterprise Trading Terminal | VIP", layout="wide", page_icon="📈")
 
 # ==========================================
 # 1. BAĞLANTI VE ALTYAPI AYARLARI
@@ -32,7 +32,7 @@ st.markdown("""
     .block-container { padding-top: 2rem; max-width: 95%; }
     [data-testid="stMetricValue"] { font-size: 26px; font-weight: bold; color: #FCD535 !important; }
     div[data-testid="metric-container"] { background-color: #1e2329; padding: 15px; border-radius: 6px; border: 1px solid #2b3139; }
-    .analysis-box { background-color: #161a1e; padding: 15px; border-radius: 6px; border-left: 5px solid #FCD535; font-size: 15px; color: #d1d4dc; margin-top: 10px; margin-bottom: 20px; line-height: 1.6; }
+    .analysis-box { background-color: #161a1e; padding: 15px; border-radius: 6px; border-left: 5px solid #00d2ff; font-size: 15px; color: #d1d4dc; margin-top: 10px; margin-bottom: 20px; line-height: 1.6; }
     .highlight-up { color: #0ecb81; font-weight: bold; }
     .highlight-down { color: #f6465d; font-weight: bold; }
     .live-indicator { color: #f6465d; font-weight: bold; animation: blinker 1.5s linear infinite; font-size: 18px; margin-right: 10px;}
@@ -68,20 +68,19 @@ def process_data_to_ohlc(df, interval='5s'):
     df.set_index('processed_time', inplace=True)
     ohlc = df['average_price'].resample(interval).ohlc()
     
-    # Premium Verilerin Çökmemesi İçin Güvenlik Kontrolü
+    # CVD ve diğer premium verilerin eklenmesi
     base_cols = ['predicted_price', 'Bollinger_Upper', 'Bollinger_Lower', 'MACD', 'Signal_Line', 'RSI', 'volatility', 'SMA_20']
-    premium_cols = [c for c in ['trade_side', 'is_buyer_maker'] if c in df.columns]
+    premium_cols = [c for c in ['trade_side', 'is_buyer_maker', 'cvd'] if c in df.columns]
     
     indicators = df[base_cols + premium_cols].resample(interval).last()
     
-    # Yeni Hacim (Volume) Verisini Toplama (Sum)
     if 'volume_usd' in df.columns:
         ohlc['volume_usd_sum'] = df['volume_usd'].resample(interval).sum()
         
     return pd.concat([ohlc, indicators], axis=1).dropna().reset_index()
 
 # ==========================================
-# 4. DUAL-TRACK MİMARİSİ (FAST PATH & SLOW PATH)
+# 4. KAFKA VE DB BAĞLANTILARI
 # ==========================================
 @st.cache_data(ttl=5, show_spinner=False)
 def get_data_from_db():
@@ -94,6 +93,7 @@ def get_data_from_db():
         return df
     except: return pd.DataFrame()
 
+# SENİN İSTEDİĞİN GİBİ KAFKA CONSUMER'I KORUDUK
 if 'kafka_consumer' not in st.session_state:
     try:
         st.session_state['kafka_consumer'] = KafkaConsumer(
@@ -163,7 +163,7 @@ if not df_raw.empty:
         live_price = get_live_price(selected_sym)
         display_price = live_price if live_price else last_raw['average_price']
         
-        # --- ÜST METRİKLER (ORİJİNAL) ---
+        # --- ÜST METRİKLER ---
         st.write("") 
         k1, k2, k3, k4 = st.columns(4)
         k1.metric("💰 Anlık Fiyat (Kafka)", f"{display_price:,.5f} $")
@@ -176,25 +176,29 @@ if not df_raw.empty:
         rsi_state = "Aşırı Alım" if rsi_val > 70 else "Aşırı Satım" if rsi_val < 30 else "Nötr"
         k4.metric("📊 RSI (14)", f"{rsi_val:.1f}", rsi_state)
 
-        # --- YENİ PREMIUM METRİKLER (ORİJİNAL TASARIMA UYGUN) ---
-        if 'volume_usd' in df_filtered.columns:
-            st.write("")
-            p1, p2, p3 = st.columns(3)
-            vol_usd = last_raw.get('volume_usd', 0)
-            p1.metric("🌊 Son İşlem Hacmi (USD)", f"${vol_usd:,.0f}")
+        # --- YENİ EKLENEN: SMART MONEY & PREMIUM METRİKLER ---
+        st.write("")
+        p1, p2, p3, p4 = st.columns(4)
+        
+        vol_usd = last_raw.get('volume_usd', 0)
+        p1.metric("🌊 Son İşlem Hacmi", f"${vol_usd:,.0f}")
 
-            side_val = last_raw.get('trade_side', 'N/A')
-            side_color = "🟢 ALICI (BUY)" if side_val == 'BUY' else "🔴 SATICI (SELL)" if side_val == 'SELL' else "⚪ NÖTR"
-            p2.metric("⚖️ Son İşlem Yönü", side_color)
+        side_val = last_raw.get('trade_side', 'N/A')
+        side_color = "🟢 ALICI (BUY)" if side_val == 'BUY' else "🔴 SATICI (SELL)" if side_val == 'SELL' else "⚪ NÖTR"
+        p2.metric("⚖️ Son İşlem Yönü", side_color)
 
-            is_maker = last_raw.get('is_buyer_maker', False)
-            maker_text = "Satıcı Agresif" if is_maker else "Alıcı Agresif"
-            p3.metric("🔥 Piyasa Baskısı", maker_text)
+        is_maker = last_raw.get('is_buyer_maker', False)
+        maker_text = "Satıcı Agresif" if is_maker else "Alıcı Agresif"
+        p3.metric("🔥 Piyasa Baskısı", maker_text)
+        
+        display_cvd = last_raw.get('cvd', 0)
+        cvd_color = "normal" if display_cvd > 0 else "inverse"
+        p4.metric("🐋 Akıllı Para (CVD)", f"${display_cvd:,.0f}", delta="Alıcı Baskısı" if display_cvd > 0 else "Satıcı Baskısı", delta_color=cvd_color)
 
         st.divider()
 
         # ==========================================
-        # 8. ANA FİYAT GRAFİĞİ VE YORUMU (ORİJİNAL)
+        # 8. ANA FİYAT GRAFİĞİ VE YORUMU
         # ==========================================
         st.markdown(f"<h3 style='color: #eaecef;'>Fiyat ve Bollinger Bantları ({interval_choice})</h3>", unsafe_allow_html=True)
         if not df_ohlc.empty:
@@ -211,83 +215,82 @@ if not df_raw.empty:
             if y_axis_mode == "Odaklanmış (Zoom)":
                 fig.update_yaxes(range=[df_ohlc['low'].min() * 0.999, df_ohlc['high'].max() * 1.001])
             
-            fig.update_layout(template="plotly_dark", height=500, margin=dict(l=0,r=0,t=10,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', xaxis_rangeslider_visible=False)
+            fig.update_layout(template="plotly_dark", height=450, margin=dict(l=0,r=0,t=10,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', xaxis_rangeslider_visible=False)
             st.plotly_chart(fig, use_container_width=True)
 
-        # ANA GRAFİK CANLI YORUM KUTUSU
         dist_up = last_ohlc['Bollinger_Upper'] - last_ohlc['close']
         dist_down = last_ohlc['close'] - last_ohlc['Bollinger_Lower']
         p_status = "Bollinger üst bandına (Direnç) yaklaşıyor, satış baskısı artabilir." if dist_up < dist_down else "Bollinger alt bandına (Destek) yakın, tepki alımı gelebilir."
         t_status = f"Yapay zeka tahmini mevcut fiyatın <span class='highlight-{'up' if last_raw['predicted_price'] > last_raw['average_price'] else 'down'}'>{'üzerinde (Yükseliş Beklentisi)' if last_raw['predicted_price'] > last_raw['average_price'] else 'altında (Düşüş Beklentisi)'}</span>."
         
-        st.markdown(f"<div class='analysis-box'><b>💡 Dinamik Fiyat ve Trend Analizi:</b><br>• {p_status}<br>• {t_status}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='analysis-box' style='border-left-color: #fcd535;'><b>💡 Dinamik Fiyat ve Trend Analizi:</b><br>• {p_status}<br>• {t_status}</div>", unsafe_allow_html=True)
 
         # ==========================================
-        # 9. ALT GRAFİKLER (MACD & RSI) VE YORUMLARI
+        # 9. YENİ: CVD VE HACİM ANALİZİ (YAN YANA)
+        # ==========================================
+        if 'cvd' in df_ohlc.columns and 'volume_usd_sum' in df_ohlc.columns:
+            st.markdown("<h3 style='color: #00d2ff;'>🐋 Smart Money & Emir Akışı (Order Flow)</h3>", unsafe_allow_html=True)
+            col_cvd, col_vol = st.columns(2)
+            
+            with col_cvd:
+                st.markdown("<h5 style='color: #848E9C;'>Kümülatif Hacim Deltası (CVD)</h5>", unsafe_allow_html=True)
+                fig_cvd = go.Figure()
+                cvd_colors = ['#0ecb81' if val > 0 else '#f6465d' for val in df_ohlc['cvd']]
+                fig_cvd.add_trace(go.Bar(x=df_ohlc['processed_time'], y=df_ohlc['cvd'], marker_color=cvd_colors))
+                fig_cvd.update_layout(template="plotly_dark", height=250, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11')
+                st.plotly_chart(fig_cvd, use_container_width=True)
+                
+                cvd_status = "Büyük yatırımcılar (Smart Money) mal topluyor." if display_cvd > 0 else "Büyük yatırımcılar mal boşaltıyor."
+                st.markdown(f"<div class='analysis-box'><b>💡 Alpha Metrik (CVD):</b><br>Son pencerede net delta <b>${display_cvd:,.0f}</b>. {cvd_status} Fiyat artsa bile bu grafik kırmızıysa DİKKATLİ OLUN (Fakeout).</div>", unsafe_allow_html=True)
+
+            with col_vol:
+                st.markdown("<h5 style='color: #848E9C;'>Toplam İşlem Hacmi (Volume)</h5>", unsafe_allow_html=True)
+                fig_vol = go.Figure()
+                vol_colors = ['#0ecb81' if row['close'] >= row['open'] else '#f6465d' for index, row in df_ohlc.iterrows()]
+                fig_vol.add_trace(go.Bar(x=df_ohlc['processed_time'], y=df_ohlc['volume_usd_sum'], marker_color=vol_colors))
+                fig_vol.update_layout(template="plotly_dark", height=250, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11')
+                st.plotly_chart(fig_vol, use_container_width=True)
+
+        st.divider()
+
+        # ==========================================
+        # 10. ALT GRAFİKLER (MACD & RSI)
         # ==========================================
         if not df_ohlc.empty:
             col_left, col_right = st.columns(2)
             
             with col_left:
-                st.markdown("<h4 style='color: #848E9C;'>Momentum (MACD)</h4>", unsafe_allow_html=True)
+                st.markdown("<h5 style='color: #848E9C;'>Momentum (MACD)</h5>", unsafe_allow_html=True)
                 fig_macd = go.Figure()
                 macd_hist = df_ohlc['MACD'] - df_ohlc['Signal_Line']
                 fig_macd.add_trace(go.Bar(x=df_ohlc['processed_time'], y=macd_hist, marker_color=['#0ecb81' if x > 0 else '#f6465d' for x in macd_hist]))
                 fig_macd.add_trace(go.Scatter(x=df_ohlc['processed_time'], y=df_ohlc['MACD'], line=dict(color='#3498db', width=1.5)))
-                fig_macd.update_layout(template="plotly_dark", height=250, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', showlegend=False)
+                fig_macd.update_layout(template="plotly_dark", height=200, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', showlegend=False)
                 st.plotly_chart(fig_macd, use_container_width=True)
-                
-                macd_val = macd_hist.iloc[-1]
-                macd_comment = "MACD histogramı <span class='highlight-up'>pozitif</span> bölgede, alıcılar güçleniyor." if macd_val > 0 else "MACD histogramı <span class='highlight-down'>negatif</span> bölgede, satıcılar baskın."
-                st.markdown(f"<div class='analysis-box'><b>📊 MACD Stratejisi:</b><br>{macd_comment}</div>", unsafe_allow_html=True)
 
             with col_right:
-                st.markdown("<h4 style='color: #848E9C;'>Güç Endeksi (RSI)</h4>", unsafe_allow_html=True)
+                st.markdown("<h5 style='color: #848E9C;'>Güç Endeksi (RSI)</h5>", unsafe_allow_html=True)
                 fig_rsi = go.Figure()
                 fig_rsi.add_hrect(y0=70, y1=100, fillcolor='#f6465d', opacity=0.1, line_width=0)
                 fig_rsi.add_hrect(y0=0, y1=30, fillcolor='#0ecb81', opacity=0.1, line_width=0)
                 fig_rsi.add_trace(go.Scatter(x=df_ohlc['processed_time'], y=df_ohlc['RSI'], line=dict(color='#FF6692', width=2)))
-                fig_rsi.update_layout(template="plotly_dark", height=250, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', yaxis=dict(range=[0, 100]))
+                fig_rsi.update_layout(template="plotly_dark", height=200, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', yaxis=dict(range=[0, 100]))
                 st.plotly_chart(fig_rsi, use_container_width=True)
-                
-                rsi_comment = "Fiyat <span class='highlight-down'>aşırı alım (Overbought)</span> bölgesinde. Düzeltme riski masada." if rsi_val > 70 else "Fiyat <span class='highlight-up'>aşırı satım (Oversold)</span> bölgesinde. Dip arayışı olabilir." if rsi_val < 30 else "Piyasa şu an nötr dengede, ekstrem bir alım/satım baskısı yok."
-                st.markdown(f"<div class='analysis-box'><b>🌊 RSI Değerlendirmesi:</b><br>Mevcut RSI: <b>{rsi_val:.1f}</b>. {rsi_comment}</div>", unsafe_allow_html=True)
-
-        # ==========================================
-        # 10. YENİ EKLENEN: HACİM (VOLUME) GRAFİĞİ VE YORUMU
-        # ==========================================
-        if 'volume_usd_sum' in df_ohlc.columns and not df_ohlc.empty:
-            st.markdown("<h4 style='color: #848E9C;'>İşlem Hacmi (Volume USD)</h4>", unsafe_allow_html=True)
-            fig_vol = go.Figure()
-            colors = ['#0ecb81' if row['close'] >= row['open'] else '#f6465d' for index, row in df_ohlc.iterrows()]
-            fig_vol.add_trace(go.Bar(x=df_ohlc['processed_time'], y=df_ohlc['volume_usd_sum'], marker_color=colors))
-            fig_vol.update_layout(template="plotly_dark", height=250, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='#0b0e11', paper_bgcolor='#0b0e11', showlegend=False)
-            st.plotly_chart(fig_vol, use_container_width=True)
-
-            last_vol = df_ohlc['volume_usd_sum'].iloc[-1]
-            trade_side = last_raw.get('trade_side', 'Bilinmiyor')
-            vol_trend = "alıcıların kontrolünde" if trade_side == 'BUY' else "satıcıların kontrolünde"
-            vol_comment = f"Son periyotta piyasada <b>${last_vol:,.0f}</b> hacim döndü. Ağırlıklı emir akışı <span class='highlight-{'up' if trade_side == 'BUY' else 'down'}'>{vol_trend}</span> ilerliyor."
-            st.markdown(f"<div class='analysis-box'><b>🔥 Hacim ve Emir Akışı (Order Flow) Analizi:</b><br>{vol_comment}</div>", unsafe_allow_html=True)
 
         # ==========================================
         # 11. POSTGRESQL HAM VERİ TABLOSU
         # ==========================================
         st.divider()
-        st.subheader("📋 PostgreSQL Veri Katmanı (Son 10 İşlem Kaydı)")
-        
-        display_cols = ['processed_time', 'symbol', 'average_price', 'predicted_price', 'trade_side', 'is_buyer_maker', 'volume_usd', 'volatility', 'RSI', 'MACD', 'Bollinger_Upper', 'Bollinger_Lower']
-        available_cols = [c for c in display_cols if c in df_filtered.columns]
-        
-        st.dataframe(
-            df_filtered[available_cols].sort_values('processed_time', ascending=False).head(10).style.format({
-                'average_price': '{:.5f}', 'predicted_price': '{:.5f}', 'volatility': '{:.4f}', 
-                'volume_usd': '${:,.2f}',
-                'RSI': '{:.2f}', 'MACD': '{:.4f}', 'Bollinger_Upper': '{:.2f}', 'Bollinger_Lower': '{:.2f}'
-            }), 
-            use_container_width=True,
-            hide_index=True
-        )
+        with st.expander("📋 Veritabanı Kayıtları (Son 10 İşlem)"):
+            display_cols = ['processed_time', 'symbol', 'average_price', 'predicted_price', 'cvd', 'trade_side', 'volume_usd', 'is_buyer_maker']
+            available_cols = [c for c in display_cols if c in df_filtered.columns]
+            
+            st.dataframe(
+                df_filtered[available_cols].sort_values('processed_time', ascending=False).head(10).style.format({
+                    'average_price': '{:.5f}', 'predicted_price': '{:.5f}', 'cvd': '${:,.2f}', 'volume_usd': '${:,.2f}'
+                }), 
+                use_container_width=True, hide_index=True
+            )
 
 # ==========================================
 # 12. SAYAÇ YÖNETİMİ VE RERUN (LOOP)

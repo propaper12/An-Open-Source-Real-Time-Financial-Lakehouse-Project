@@ -5,271 +5,216 @@ import docker
 import pandas as pd
 import psutil 
 import time
+import psycopg2
+import redis
+from psycopg2.extras import RealDictCursor
+from datetime import datetime
 
 # --- MODÜL YOLU AYARLARI ---
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# --- HARİCİ MODÜLLERİ YÜKLE ---
-try:
-    from admin_modules.minio_ops import render_minio_tab
-    from admin_modules.db_ops import render_postgres_tab
-    from admin_modules.metabase_ops import render_metabase_tab
-except ImportError as e:
-    def render_minio_tab(): st.error("MinIO Modülü Eksik")
-    def render_postgres_tab(): st.error("Postgres Modülü Eksik")
-    def render_metabase_tab(): st.error("Metabase Modülü Eksik")
+# --- VERİTABANI VE REDIS BAĞLANTILARI ---
+def get_db_connection():
+    try:
+        return psycopg2.connect(
+            host=os.getenv("POSTGRES_HOST", "postgres"),
+            database=os.getenv("POSTGRES_DB", "market_db"),
+            user=os.getenv("POSTGRES_USER", "admin_lakehouse"),
+            password=os.getenv("POSTGRES_PASSWORD", "SuperSecret_DB_Password_2026"),
+            connect_timeout=3
+        )
+    except:
+        return None
+
+def get_redis_connection():
+    try:
+        r = redis.Redis(host=os.getenv("REDIS_HOST", "redis"), port=6379, db=0, decode_responses=True)
+        r.ping()
+        return r
+    except:
+        return None
 
 # --- SAYFA AYARLARI ---
-st.set_page_config(page_title="System Control Plane", layout="wide", page_icon="🎛️")
+st.set_page_config(page_title="Radar Global | Control Plane", layout="wide", page_icon="🎛️")
 
-# --- DATAROBOT / ENTERPRISE STİLİ CSS ---
+# --- ENTERPRISE DARK CSS ---
 st.markdown("""
 <style>
-    /* Ana Arka Plan - Derin Koyu Gri */
-    .stApp {
-        background-color: #0E1117;
-    }
-    
-    /* Kartlar (Containers) */
+    .stApp { background-color: #0E1117; }
     [data-testid="stContainer"] {
         background-color: #161920;
         border: 1px solid #303339;
-        border-radius: 6px;
-        padding: 15px;
+        border-radius: 8px;
+        padding: 20px;
     }
-    
-    /* Metrikler */
-    [data-testid="stMetricValue"] {
-        color: #00ADB5 !important; /* DataRobot Turkuazı */
-        font-family: 'Roboto Mono', monospace;
-        font-weight: 700;
-    }
-    
-    /* Sekmeler */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #1E2127;
-        border-radius: 4px;
-        color: #FAFAFA;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #00ADB5 !important;
-        color: #FFFFFF !important;
-    }
-
-    /* Butonlar */
+    [data-testid="stMetricValue"] { color: #00ADB5 !important; font-weight: 800; }
     .stButton button {
-        background-color: #262930;
+        background-color: #1E2127;
         border: 1px solid #00ADB5;
         color: #00ADB5;
         font-weight: bold;
-        transition: all 0.3s ease;
+        width: 100%;
     }
     .stButton button:hover {
         background-color: #00ADB5;
         color: white;
-        box-shadow: 0 0 10px rgba(0, 173, 181, 0.5);
     }
-    
-    /* Kod Blokları (Loglar için) */
-    code {
-        color: #e6e6e6;
-        background-color: #000000 !important;
-        font-family: 'Courier New', monospace;
-    }
+    code { background-color: #000 !important; color: #00FF41 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- BAŞLIK ALANI ---
+# --- BAŞLIK ---
 c1, c2 = st.columns([3, 1])
 with c1:
-    st.title("🎛️ Enterprise Control Plane")
-    st.caption("Altyapı Sağlığı • Operasyonel Bakım • Veri Yönetimi")
+    st.title("🎛️ Radar Global Enterprise Control Plane")
+    st.caption("Infrastructure Management • User CRM • Real-Time Monitoring")
 with c2:
-    st.markdown("<div style='text-align: right; color: #00ADB5;'>v2.5.0 (Live Logs)</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align: right; color: #00ADB5;'>SYSTEM TIME: {datetime.now().strftime('%H:%M:%S')}</div>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# --- BÖLÜM 1: HOST METRICS (KOKPİT) ---
-st.subheader("🖥️ Sunucu Kaynakları (Host Telemetry)")
+# --- BÖLÜM 1: HOST TELEMETRY ---
+st.subheader("🖥️ Sunucu Kaynak Durumu")
+k1, k2, k3 = st.columns(3)
+cpu = psutil.cpu_percent()
+mem = psutil.virtual_memory()
+disk = psutil.disk_usage('/')
 
-try:
-    cpu_percent = psutil.cpu_percent(interval=0.1)
-    mem_info = psutil.virtual_memory()
-    disk_info = psutil.disk_usage('/')
-    
-    k1, k2, k3 = st.columns(3)
+with k1:
+    with st.container():
+        st.metric("CPU Usage", f"%{cpu}")
+        st.progress(cpu/100)
+with k2:
+    with st.container():
+        st.metric("RAM Usage", f"{mem.used/(1024**3):.1f}GB / {mem.total/(1024**3):.1f}GB")
+        st.progress(mem.percent/100)
+with k3:
+    with st.container():
+        st.metric("Disk Storage", f"%{disk.percent} Full")
+        st.progress(disk.percent/100)
 
-    with k1:
-        with st.container(border=True):
-            st.markdown("**🔥 CPU Yükü**")
-            st.metric("Core Usage", f"%{cpu_percent}", label_visibility="collapsed")
-            st.progress(cpu_percent / 100)
-
-    with k2:
-        with st.container(border=True):
-            mem_gb = mem_info.used / (1024 ** 3)
-            total_gb = mem_info.total / (1024 ** 3)
-            st.markdown("**🧠 RAM Kullanımı**")
-            st.metric("Memory", f"{mem_gb:.1f} / {total_gb:.1f} GB", f"%{mem_info.percent}", label_visibility="collapsed")
-            st.progress(mem_info.percent / 100)
-
-    with k3:
-        with st.container(border=True):
-            disk_gb = disk_info.used / (1024 ** 3)
-            st.markdown("**💾 Disk Durumu**")
-            st.metric("Storage", f"{disk_gb:.1f} GB", f"%{disk_info.percent} Dolu", label_visibility="collapsed")
-            st.progress(disk_info.percent / 100)
-
-except Exception as e:
-    st.error(f"Host verisi alınamadı: {e}")
-
-st.markdown("---")
-
-# --- BÖLÜM 2: KONTEYNER DURUMU ---
-st.subheader("📦 Mikroservis Sağlığı")
-
+# --- BÖLÜM 2: DOCKER SERVICE MESH ---
+st.subheader("📦 Mikroservis Sağlık Matrisi")
 try:
     client = docker.from_env()
-    all_containers = client.containers.list(all=True)
+    containers = client.containers.list(all=True)
+    grid = st.columns(4)
+    services = ["binance_producer", "kafka", "spark-silver", "api_gateway", "postgres", "redis_cache", "ml-trainer", "grafana"]
     
-    service_map = {
-        "producer": "Binance Ingestion",
-        "kafka": "Kafka Broker",
-        "spark-silver": "Spark Engine (AI)",
-        "postgres": "PostgreSQL DB",
-        "minio": "MinIO Lakehouse",
-        "mlflow_server": "MLflow Registry",
-        "dashboard": "Streamlit UI",
-        "api_gateway": "Universal API"
-    }
-    
-    grid_cols = st.columns(4)
-    
-    for i, (key, label) in enumerate(service_map.items()):
-        container = next((c for c in all_containers if key in c.name), None)
-        col = grid_cols[i % 4]
-        
-        with col:
-            with st.container(border=True):
-                if container:
-                    status = container.status
-                    icon = "🟢" if status == "running" else "🔴" if status == "exited" else "🟡"
-                    st.markdown(f"**{label}**")
-                    st.markdown(f"{icon} `{status.upper()}`")
+    for idx, s_name in enumerate(services):
+        cont = next((c for c in containers if s_name in c.name), None)
+        with grid[idx % 4]:
+            with st.container():
+                if cont and cont.status == "running":
+                    st.markdown(f"🟢 **{s_name.upper()}**")
+                    st.caption("Service is healthy")
                 else:
-                    st.markdown(f"**{label}**")
-                    st.markdown("⚪ `OFFLINE`")
-    
-except Exception as e:
-    st.warning(f"Docker bağlantı hatası: {e}")
+                    st.markdown(f"🔴 **{s_name.upper()}**")
+                    st.caption("Service offline/restarting")
+except:
+    st.error("Docker Socket Error")
 
 st.markdown("---")
 
-# --- BÖLÜM 3: YÖNETİM SEKMELERİ ---
-tabs = st.tabs([
-    "🛠️ Bakım & Kalite (OPS)", 
-    "📜 Canlı Loglar", 
-    "🗄️ Lakehouse (MinIO)", 
-    "🐘 Veritabanı (SQL)", 
-    "📊 BI Raporlama"
-])
+# --- BÖLÜM 3: ANA YÖNETİM SEKMELERİ ---
+tabs = st.tabs(["👥 Kullanıcı Yönetimi (CRM)", "🛡️ Güvenlik & Ban Listesi", "⚙️ Sistem Bakımı", "📜 Canlı Loglar"])
 
-# --- SEKME 1: OPERASYONEL BAKIM (GÜNCELLENEN KISIM) ---
+# --- TAB 1: USER MANAGEMENT (CRM) ---
 with tabs[0]:
-    c_ops1, c_ops2 = st.columns(2)
-    
-    # --- SOL: BAKIM (MAINTENANCE) ---
-    with c_ops1:
-        with st.container(border=True):
-            st.subheader("🧹 Delta Lake Bakım Motoru")
-            st.info("Küçük dosyaları birleştirir (Optimize) ve 1 saatten eski çöpleri siler (Vacuum).")
-            
-            # Butona basınca status container açılacak ve loglar içine akacak
-            if st.button("🚀 SİSTEM BAKIMINI BAŞLAT", type="primary", use_container_width=True):
-                # 'expanded=True' ile logları açık tutuyoruz
-                with st.status("Spark Engine'e Bağlanılıyor...", expanded=True) as status:
-                    try:
-                        st.write("🔌 Docker soketine erişiliyor...")
-                        container = client.containers.get("spark-silver")
-                        
-                        st.write("⚙️ `maintenance_job.py` çalıştırılıyor...")
-                        # exec_run komutu script bitene kadar bekler (blocking)
-                        exec_result = container.exec_run("python maintenance_job.py")
-                        output = exec_result.output.decode("utf-8")
-                        
-                        st.write("📄 Log çıktısı alınıyor...")
-                        
-                        # Logları Ekrana Bas (Karanlık Modda)
-                        st.code(output, language="bash")
-                        
-                        if exec_result.exit_code == 0:
-                            status.update(label="✅ Bakım Başarıyla Tamamlandı!", state="complete", expanded=True)
-                        else:
-                            status.update(label="❌ Hata Oluştu", state="error", expanded=True)
-                            
-                    except Exception as e:
-                        status.update(label="Bağlantı Hatası", state="error")
-                        st.error(str(e))
+    st.subheader("User Authorization & Tier Management")
+    conn = get_db_connection()
+    if conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT id, username, email, tier, api_key FROM api_users")
+        users = cur.fetchall()
+        df = pd.DataFrame(users)
+        
+        st.dataframe(df, use_container_width=True)
+        
+        c_up1, c_up2 = st.columns(2)
+        with c_up1:
+            with st.container():
+                st.markdown("### 👑 Yetki Yükselt/Düşür")
+                target_user = st.selectbox("Kullanıcı Seç:", df['username'].tolist() if not df.empty else [])
+                new_tier = st.selectbox("Yeni Seviye:", ["FREE", "VIP"])
+                if st.button("YETKİYİ GÜNCELLE"):
+                    cur.execute("UPDATE api_users SET tier = %s WHERE username = %s", (new_tier, target_user))
+                    conn.commit()
+                    st.success(f"{target_user} artık {new_tier}!")
+                    time.sleep(1)
+                    st.rerun()
+        
+        with c_up2:
+            with st.container():
+                st.markdown("### 🗑️ Kullanıcıyı Sil")
+                del_user = st.selectbox("Silinecek Hesap:", df['username'].tolist() if not df.empty else [])
+                if st.button("HESABI KALICI SİL"):
+                    cur.execute("DELETE FROM api_users WHERE username = %s", (del_user,))
+                    conn.commit()
+                    st.error(f"{del_user} sistemden temizlendi.")
+                    time.sleep(1)
+                    st.rerun()
+        conn.close()
 
-    # --- SAĞ: KALİTE (QUALITY) ---
-    with c_ops2:
-        with st.container(border=True):
-            st.subheader("🛡️ Veri Kalite Kapısı")
-            st.info("Silver katmanını tarar. Negatif fiyat, null değer ve hatalı zaman damgalarını raporlar.")
-            
-            if st.button("🔍 KALİTE KONTROLÜNÜ ÇALIŞTIR", use_container_width=True):
-                # 'expanded=True' logları anında gösterir
-                with st.status("Veri Analizi Başlatılıyor...", expanded=True) as status:
-                    try:
-                        st.write("🧪 Spark analiz motoru hazırlanıyor...")
-                        container = client.containers.get("spark-silver")
-                        
-                        st.write("🔎 `quality_gate.py` ile veri taranıyor...")
-                        exec_result = container.exec_run("python quality_gate.py")
-                        output = exec_result.output.decode("utf-8")
-                        
-                        st.write("📊 Rapor oluşturuluyor...")
-                        
-                        # Logları Renkli Göster (YAML formatı okumayı kolaylaştırır)
-                        st.code(output, language="yaml")
-                        
-                        if "BAŞARILI" in output or "PASSED" in output:
-                            status.update(label="✅ Kalite: MÜKEMMEL", state="complete", expanded=True)
-                        elif "FAILED" in output:
-                            status.update(label="⚠️ Kalite: SORUNLU", state="error", expanded=True)
-                        else:
-                            status.update(label="İşlem Bitti", state="complete", expanded=True)
-                        
-                    except Exception as e:
-                        status.update(label="Sistem Hatası", state="error")
-                        st.error(str(e))
-
-# --- SEKME 2: LOG İZLEYİCİ ---
+# --- TAB 2: SECURITY & BAN LIST ---
 with tabs[1]:
-    col_sel, col_log = st.columns([1, 4])
-    with col_sel:
-        st.markdown("**Hedef Servis**")
-        running_names = [c.name for c in client.containers.list()] if client else []
-        selected_container = st.selectbox("Seçiniz:", running_names, label_visibility="collapsed")
-        lines = st.slider("Satır Sayısı", 50, 500, 100)
-        if st.button("🔄 Yenile", use_container_width=True):
-            st.rerun()
+    st.subheader("Redis Distributed Ban Manager")
+    r = get_redis_connection()
+    if r:
+        all_keys = r.keys("ban:*")
+        if all_keys:
+            st.warning(f"Sistemde {len(all_keys)} adet banlı kullanıcı/IP tespit edildi.")
+            ban_data = []
+            for k in all_keys:
+                ban_data.append({"API_KEY": k.replace("ban:", ""), "Status": r.get(k)})
             
-    with col_log:
-        if selected_container:
-            try:
-                container = client.containers.get(selected_container)
-                logs = container.logs(tail=lines).decode("utf-8")
-                st.code(logs, language="bash")
-            except Exception as e:
-                st.error(f"Log okunamadı: {e}")
+            st.table(pd.DataFrame(ban_data))
+            
+            unban_target = st.selectbox("Banı Kaldırılacak Key:", [d['API_KEY'] for d in ban_data])
+            if st.button("🔓 SEÇİLİ KULLANICIYI AFFET (UNBAN)"):
+                r.delete(f"ban:{unban_target}")
+                st.success("Kullanıcı erişimi tekrar açıldı.")
+                st.rerun()
+        else:
+            st.success("Temiz! Şu an banlı kullanıcı bulunmuyor.")
+    else:
+        st.error("Redis Connection Failed")
 
-with tabs[2]: render_minio_tab()
-with tabs[3]: render_postgres_tab()
-with tabs[4]: render_metabase_tab()
+# --- TAB 3: MAINTENANCE (SPARK & DELTA) ---
+with tabs[2]:
+    st.subheader("Lakehouse Operations")
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        with st.container():
+            st.markdown("### 🧹 Delta Optimize")
+            st.write("Veri parçacıklarını birleştirir, sorgu hızını artırır.")
+            if st.button("SPARK OPTIMIZE BAŞLAT"):
+                with st.status("Spark Job Running...") as s:
+                    try:
+                        res = client.containers.get("spark-silver").exec_run("python maintenance_job.py")
+                        st.code(res.output.decode())
+                        s.update(label="Başarıyla Tamamlandı", state="complete")
+                    except: st.error("Spark Container Error")
+    
+    with col_m2:
+        with st.container():
+            st.markdown("### 🧪 Veri Kalite Testi")
+            st.write("Null değerleri ve negatif fiyatları tarar.")
+            if st.button("QUALITY GATE ÇALIŞTIR"):
+                with st.status("Scanning Data...") as s:
+                    try:
+                        res = client.containers.get("spark-silver").exec_run("python quality_gate.py")
+                        st.code(res.output.decode())
+                        s.update(label="Tarama Bitti", state="complete")
+                    except: st.error("Service Error")
+
+# --- TAB 4: LIVE LOGS ---
+with tabs[3]:
+    st.subheader("Real-Time Container Logs")
+    target_log = st.selectbox("Logu İzlenecek Servis:", [c.name for c in containers])
+    if st.button("LOGLARI GETİR"):
+        log_output = client.containers.get(target_log).logs(tail=200).decode("utf-8")
+        st.code(log_output, language="bash")
 
 st.markdown("---")
-st.caption("© 2026 Lakehouse Operations | Architect: Ömer Çakan | Powered by Streamlit & Docker")
+st.caption("© 2026 Radar Global Ops Center | Developed by Ömer Çakan")

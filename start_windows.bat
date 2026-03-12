@@ -8,9 +8,9 @@ cd /d "%~dp0"
 
 :: --- 1. WSL ULTRA-LITE TEST AYARLARI (4GB RAM + 4GB SWAP) ---
 set WSL_CONFIG="%USERPROFILE%\.wslconfig"
-echo [ ⚙️ PROCESS ] 6GB RAM ve 4GB M2-Swap limitleri uygulaniyor...
+echo [ ⚙️ PROCESS ] 8GB RAM ve 4GB M2-Swap limitleri uygulaniyor...
 echo [wsl2] > %WSL_CONFIG%
-echo memory=6GB >> %WSL_CONFIG%
+echo memory=8GB >> %WSL_CONFIG%
 echo processors=2 >> %WSL_CONFIG%
 echo swap=4GB >> %WSL_CONFIG%
 echo autoMemoryReclaim=dropcache >> %WSL_CONFIG%

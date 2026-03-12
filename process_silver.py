@@ -1,38 +1,38 @@
 import time
 import os
-import requests
+import json
+import redis
 import pandas as pd
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, col, current_timestamp, coalesce, window, stddev_pop, avg, last, sum
+from pyspark.sql.functions import from_json, col, current_timestamp, coalesce, window, stddev_pop, avg, last, sum, to_timestamp, when
 from pyspark.sql.types import StructType, StringType, DoubleType, BooleanType
+from delta.tables import DeltaTable
 
-# Mimariyi V6.1 sürümüne taşıyarak ML tahminleme süreçlerini Spark içerisinden çıkardım.
-# Artık Spark, ağır hesaplamaları yapıp sonuçları mikroservis olarak kurguladığım API'ye iletiyor.
-print("\n" + "="*50)
-print("V6.1 GÜNCELLEME: PREMIUM VERİ (VOLUME & ORDER FLOW) AKTİF")
-print("="*50 + "\n")
+print("\n" + "="*60)
+print("🚀 V9.0 ENTERPRISE: SMART MONEY TRACKING & CVD ENGINE")
+print("="*60 + "\n")
 
-time.sleep(3)
-
-# --- ÇEVRE DEĞİŞKENLERİ ---
+# --- ÇEVRE DEĞİŞKENLERİ VE BAĞLANTILAR ---
 KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092')
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
 ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "admin")
 SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "admin12345")
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow_server:5000")
 
-# Model-as-a-Service (MaaS) yaklaşımı gereği bağımsız çalışan API endpoint'ini tanımladım.
-INFERENCE_API_URL = os.getenv("INFERENCE_API_URL", "http://inference_api:8001/predict")
-
-# --- POSTGRESQL BAĞLANTISI ---
 PG_USER = os.getenv("POSTGRES_USER", "admin_lakehouse")
 PG_PASS = os.getenv("POSTGRES_PASSWORD", "SuperSecret_DB_Password_2026")
 PG_HOST = os.getenv("POSTGRES_HOST", "postgres")
 PG_DB = os.getenv("POSTGRES_DB", "market_db")
-
 PG_URL = f"jdbc:postgresql://{PG_HOST}:5432/{PG_DB}"
 PG_PROPERTIES = {"user": PG_USER, "password": PG_PASS, "driver": "org.postgresql.Driver"}
 
-# --- JAR AYARLARI ---
+# --- REDIS BAĞLANTISI ---
+try:
+    redis_client = redis.Redis(host=os.getenv("REDIS_HOST", "redis"), port=6379, db=0)
+except Exception as e:
+    redis_client = None
+
+# --- SPARK SESSION KURULUMU ---
 jar_dir = "/opt/spark-jars"
 jar_conf = ",".join([
     f"{jar_dir}/delta-core_2.12-2.4.0.jar",
@@ -46,9 +46,8 @@ jar_conf = ",".join([
     f"{jar_dir}/postgresql-42.6.0.jar"
 ])
 
-# --- SPARK SESSION ---
 spark = SparkSession.builder \
-    .appName("SilverLayer_Microservice") \
+    .appName("Enterprise_Silver_Pipeline") \
     .config("spark.jars", jar_conf) \
     .config("spark.driver.extraClassPath", f"{jar_dir}/*") \
     .config("spark.executor.extraClassPath", f"{jar_dir}/*") \
@@ -57,19 +56,15 @@ spark = SparkSession.builder \
     .config("spark.hadoop.fs.s3a.secret.key", SECRET_KEY) \
     .config("spark.hadoop.fs.s3a.path.style.access", "true") \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-    .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
     .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
     .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-    .config("spark.sql.shuffle.partitions", "2") \
+    .config("spark.sql.shuffle.partitions", "4") \
     .master("local[*]") \
     .getOrCreate()
 
-spark.sparkContext.setLogLevel("ERROR")
-# 💡 NOT: Binance WebSocket üzerinden ihtiyaca göre şu ek alanlar da çekilebilir:
-#    - 'E' (Event Time): Verinin oluşma anı (Milisaniye)
-#    - 't' (Trade ID): İşlemin benzersiz kimliği
-#    - 'b' (Buyer Order ID) & 'a' (Seller Order ID)
-#    - 'T' (Trade Time): İşlemin gerçekleşme zamanı
+spark.sparkContext.setLogLevel("WARN")
+
+# --- KAFKA OKUMA VE ŞEMA ---
 schema = StructType() \
     .add("symbol", StringType()) \
     .add("price", DoubleType()) \
@@ -78,34 +73,27 @@ schema = StructType() \
     .add("is_buyer_maker", BooleanType()) \
     .add("trade_side", StringType()) \
     .add("timestamp", StringType()) \
-    .add("source", StringType()) \
-    .add("data", StructType()
-         .add("s", StringType())    # Symbol
-         .add("p", StringType())    # Price string
-         .add("q", StringType()))   # Quantity string
+    .add("data", StructType().add("s", StringType()).add("p", StringType()).add("q", StringType()))
 
-print("Kafka üzerinden veri akışı dinleniyor...")
-df = spark.readStream \
-    .format("kafka") \
-    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
-    .option("subscribe", "market_data") \
-    .option("startingOffsets", "latest") \
-    .option("failOnDataLoss", "false") \
-    .load()
+df = spark.readStream.format("kafka").option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+    .option("subscribe", "market_data").option("startingOffsets", "latest").option("failOnDataLoss", "false").load()
 
 json_df = df.select(from_json(col("value").cast("string"), schema).alias("parsed_data"))
 
-# Farklı veri kaynaklarından gelen şemaları normalize ederken YENİ kolonları da alıyoruz
+# 💡 İŞTE BURASI ALPHA (CVD) ÜRETİM MERKEZİ!
 normalized_df = json_df.select(
     coalesce(col("parsed_data.symbol"), col("parsed_data.data.s")).alias("symbol"),
     coalesce(col("parsed_data.price"), col("parsed_data.data.p").cast("double")).alias("average_price"),
     col("parsed_data.volume_usd").alias("volume_usd"),
-    col("parsed_data.is_buyer_maker").alias("is_buyer_maker"),  # EKLENDİ
+    col("parsed_data.is_buyer_maker").alias("is_buyer_maker"),
     col("parsed_data.trade_side").alias("trade_side"),
     current_timestamp().alias("timestamp")
+).withColumn(
+    # Eğer Trade Side = BUY ise volume pozitif, SELL ise negatiftir.
+    "volume_delta", when(col("trade_side") == "BUY", col("volume_usd")).otherwise(-col("volume_usd"))
 )
 
-# Window Aggregation: Premium Verileri de hesaplıyoruz
+# Window Aggregation (Sliding Window)
 windowed_df = normalized_df \
     .withWatermark("timestamp", "1 minute") \
     .groupBy(window(col("timestamp"), "30 seconds", "5 seconds"), col("symbol")) \
@@ -113,85 +101,94 @@ windowed_df = normalized_df \
         stddev_pop("average_price").alias("volatility"),
         avg("average_price").alias("average_price"),
         sum("volume_usd").alias("volume_usd"),        
-        last("is_buyer_maker").alias("is_buyer_maker"), # EKLENDİ
+        sum("volume_delta").alias("cvd"), # 🔴 YENİ: Kümülatif Hacim Deltası Toplamı
+        last("is_buyer_maker").alias("is_buyer_maker"),
         last("trade_side").alias("trade_side"),       
-        current_timestamp().alias("processed_time")
-    ).na.fill(0, subset=["volatility", "volume_usd"])
+        last("timestamp").alias("processed_time")
+    ).na.fill(0.0, subset=["volatility", "volume_usd", "cvd"])
 
-def process_batch_with_ai(batch_df, batch_id):
-    """
-    Spark artık verileri satır satır değil, tek bir kargo paketi (JSON Array) 
-    halinde Inference API'ye gönderiyor. Network I/O darboğazı çözüldü!
-    """
+# --- 🧠 DISTRIBUTED MLOPS: PANDAS UDF ---
+# output_schema'ya cvd alanını eklemeyi unutma!
+output_schema = "symbol string, average_price double, volume_usd double, is_buyer_maker boolean, trade_side string, processed_time timestamp, volatility double, predicted_price double, cvd double"
+
+def predict_per_symbol(pdf: pd.DataFrame) -> pd.DataFrame:
+    if pdf.empty: return pdf
+    symbol = pdf['symbol'].iloc[0]
+    
+    os.environ["MLFLOW_TRACKING_URI"] = "http://mlflow_server:5000"
+    os.environ["AWS_ACCESS_KEY_ID"] = "admin"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "admin12345"
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio:9000"
+    
+    global_cache = globals().get("spark_model_cache", {})
+    if "spark_model_cache" not in globals(): globals()["spark_model_cache"] = global_cache
+        
+    model = global_cache.get(symbol)
+    if model is None:
+        try:
+            import mlflow.sklearn
+            model = mlflow.sklearn.load_model(f"models:/model_{symbol}/Production")
+            global_cache[symbol] = model
+        except Exception: model = None
+
+    pdf['lag_1'] = pdf['average_price']
+    pdf['lag_3'] = pdf['average_price']
+    pdf['ma_5'] = pdf['average_price']
+    pdf['ma_10'] = pdf['average_price']
+    pdf['momentum'] = 0.0
+    pdf['volatility_change'] = 0.0
+    
+    features = pdf[["volatility", "lag_1", "lag_3", "ma_5", "ma_10", "momentum", "volatility_change"]]
+    pdf["predicted_price"] = model.predict(features) if model else pdf["average_price"]
+        
+    return pdf[["symbol", "average_price", "volume_usd", "is_buyer_maker", "trade_side", "processed_time", "volatility", "predicted_price", "cvd"]]
+
+predictions_df = windowed_df.groupBy("symbol").applyInPandas(predict_per_symbol, schema=output_schema)
+
+# --- 🗄️ POLYGLOT PERSISTENCE (IDEMPOTENT SINK + CACHE) ---
+def write_to_sinks(batch_df, batch_id):
     if batch_df.rdd.isEmpty(): return
-    
-    safe_batch_df = batch_df.withColumn("processed_time", col("processed_time").cast("string"))
-    pdf = safe_batch_df.toPandas()
-    
-    # 1. API'ye gönderilecek "Kargo Paketini" (Payload) hazırlıyoruz
-    payload_data = []
-    for index, row in pdf.iterrows():
-        current_price = float(row['average_price'])
-        volatility = float(row['volatility']) if pd.notnull(row['volatility']) else 0.0
-        
-        payload_data.append({
-            "symbol": row['symbol'],
-            "volatility": volatility,
-            "lag_1": current_price, 
-            "lag_3": current_price, 
-            "ma_5": current_price,  
-            "ma_10": current_price, 
-            "momentum": 0.0,
-            "volatility_change": 0.0
-        })
-        
-    batch_payload = {"data": payload_data}
-    
-    pdf['predicted_price'] = pdf['average_price']
-    
-    # 2. TEK BİR HTTP İSTEĞİ (Batch Inference)
-    BATCH_API_URL = INFERENCE_API_URL.replace("/predict", "/predict_batch") 
+    batch_df.persist()
     
     try:
-        resp = requests.post(BATCH_API_URL, json=batch_payload, timeout=3)
-        if resp.status_code == 200:
-            predictions = resp.json().get("predictions", [])
-            pred_dict = {p['symbol']: p['predicted_price'] for p in predictions}
-            pdf['predicted_price'] = pdf['symbol'].map(pred_dict).fillna(pdf['average_price'])
-            print(f"Batch {batch_id}: {len(pdf)} kayıt için toplu tahmin başarıyla alındı.")
+        delta_path = "s3a://market-data/silver_layer_delta"
+        
+        # 1. DELTA LAKE MERGE
+        if DeltaTable.isDeltaTable(spark, delta_path):
+            dt = DeltaTable.forPath(spark, delta_path)
+            dt.alias("target").merge(
+                batch_df.alias("source"),
+                "target.symbol = source.symbol AND target.processed_time = source.processed_time"
+            ).whenMatchedUpdateAll().whenNotMatchedInsertAll().execute()
         else:
-            print(f"API Hatası (Status {resp.status_code}): Fallback fiyatlar kullanılıyor.")
-    except Exception as e:
-        print(f"API Bağlantı Hatası: {e}. Fallback fiyatlar kullanılıyor.")
-
-    # 3. Sonuçları Spark DataFrame'e geri çevir ve veritabanlarına yaz
-    from pyspark.sql.functions import to_timestamp
-    
-    # YENİ VERİLERİ (volume_usd, trade_side) SİSTEME DAHİL EDİYORUZ
-    pdf_final = pdf[["average_price", "predicted_price", "processed_time", "symbol", "volatility", "volume_usd", "is_buyer_maker", "trade_side"]]
-    
-    res_df = spark.createDataFrame(pdf_final)
-    res_df = res_df.withColumn("processed_time", to_timestamp(col("processed_time")))
-    
-    # MinIO (Delta Lake) Kaydı
-    res_df.write.format("delta") \
-          .mode("append") \
-          .option("mergeSchema", "true") \
-          .partitionBy("symbol") \
-          .save("s3a://market-data/silver_layer_delta")
-    
-    # PostgreSQL (TimescaleDB) Kaydı (YENİ ALANLAR EKLENDİ)
-    try:
-        pg_df = res_df.select("symbol", "volatility", "average_price", "processed_time", "predicted_price", "volume_usd", "is_buyer_maker", "trade_side")
-        pg_df.write.jdbc(url=PG_URL, table="market_data", mode="append", properties=PG_PROPERTIES)
-    except Exception as e:
-        print(f"Veritabanı yazma hatası: {e}")
+            batch_df.write.format("delta").mode("overwrite").partitionBy("symbol").save(delta_path)
         
-# Stream işlemini başlatıyoruz
-query = windowed_df.writeStream \
-    .foreachBatch(process_batch_with_ai) \
+        # 2. TIMESCALEDB SINK (Postgres'te cvd kolonu olması gerekir!)
+        batch_df.write.jdbc(url=PG_URL, table="market_data", mode="append", properties=PG_PROPERTIES)
+        
+        # 3. REDIS IN-MEMORY CACHE (VIP'ler İçin Premium Veri)
+        if redis_client:
+            rows = batch_df.collect()
+            for row in rows:
+                cache_data = {
+                    "price": row["average_price"],
+                    "predicted_price": row["predicted_price"],
+                    "trade_side": row["trade_side"],
+                    "cvd": row["cvd"] # 🔴 YENİ: API'ye CVD'yi anında buradan aktarıyoruz!
+                }
+                redis_client.set(f"LATEST_{row['symbol']}", json.dumps(cache_data))
+                
+        print(f"📦 Batch {batch_id}: Veri Delta, Postgres ve Redis'e yazıldı. (CVD Dahil)")
+    except Exception as e:
+        print(f"❌ Veri yazma hatası: {e}")
+    finally:
+        batch_df.unpersist()
+
+# --- STREAMING EXECUTION ---
+query = predictions_df.writeStream \
+    .foreachBatch(write_to_sinks) \
     .outputMode("update") \
-    .option("checkpointLocation", "/app/checkpoints_silver_v6") \
+    .option("checkpointLocation", "/app/checkpoints_silver_v9") \
     .trigger(processingTime='5 seconds') \
     .start()
 

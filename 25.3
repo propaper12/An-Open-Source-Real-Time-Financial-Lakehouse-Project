@@ -19,6 +19,7 @@ Tarayıcıdan şu adreslere giderek sistemi izleyebilirsin:
 
 Dashboard (Streamlit): http://localhost:8501
 API Dokümantasyonu (Swagger): http://localhost:8000/docs
+docker-compose exec postgres psql -U admin_lakehouse -d market_db -c "CREATE TABLE IF NOT EXISTS api_users (id SERIAL PRIMARY KEY, username VARCHAR(50), api_key VARCHAR(100) UNIQUE, tier VARCHAR(20));"
 MinIO (Veri Depo - Bucket): http://localhost:9001 
 GRAFANA=http://localhost:3001/
 postgres=http://localhost:8080/
@@ -66,3 +67,24 @@ CREATE TABLE IF NOT EXISTS market_data (
     volatility DOUBLE PRECISION,
     processed_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+docker exec -it postgres psql -U admin_lakehouse -d market_db -c "
+-- YENİ: MÜŞTERİ VE API YÖNETİM TABLOSU (EMAIL EKLENDİ)
+CREATE TABLE IF NOT EXISTS api_users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    api_key VARCHAR(64) UNIQUE NOT NULL,
+    tier VARCHAR(20) DEFAULT 'FREE',
+    password_hash VARCHAR(256),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"
+
+Write-Host "Tablolar ve Hypertable başarıyla kuruldu!"
+
+docker-compose exec redis redis-cli flushall
+
+docker exec -it postgres psql -U admin_lakehouse -d market_db -c "UPDATE api_users SET tier = 'PREMIUM';"
+docker exec -it postgres psql -U admin_lakehouse -d market_db -c "UPDATE api_users SET tier = 'VIP';"

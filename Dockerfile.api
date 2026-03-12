@@ -2,11 +2,12 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# API, Kafka, ML ve İstek kütüphaneleri (XGBoost ve LightGBM eklendi)
+# API, Kafka, ML ve İstek kütüphaneleri (Pub/Sub için aiokafka eklendi)
 RUN pip install --no-cache-dir \
     fastapi \
     uvicorn \
     kafka-python \
+    aiokafka \
     requests \
     python-dotenv \
     pandas \
@@ -14,11 +15,19 @@ RUN pip install --no-cache-dir \
     mlflow \
     boto3 \
     xgboost \
-    lightgbm
+    lightgbm \
+    psycopg2-binary \
+    websockets\
+    redis\
+    asyncpg\
+    passlib\
+    bcrypt\
+    yfinance
 
 # API Dosyaları
 COPY ingestion_api.py .
 COPY fake_company.py .
 COPY inference_api.py .
+COPY api_key_manager.py .
 
 CMD ["uvicorn", "ingestion_api:app", "--host", "0.0.0.0", "--port", "8000"]
