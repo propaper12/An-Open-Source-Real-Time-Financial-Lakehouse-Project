@@ -225,88 +225,187 @@ RadarPro ekosistemi, **Veri Mühendisliği (Data Engineering)** ve **MLOps** pre
     
     -   **Infrastructure Telemetry:** Sunucu kaynaklarını ve konteyner durumlarını canlı izleyerek sistemin operasyonel sağlığını yönetir.
       
-🛠️ Setup & Operations Guide (DevOps Command Center)
+
+Aşağıdaki metin, paylaştığın teknik detayları profesyonel bir GitHub `README.md` formatına dönüştürülmüş halidir. Bu yapıyı doğrudan kopyalayıp dosyana yapıştırabilirsin.
+
+----------
+
+## 🛠️ Setup & Operations Guide (DevOps Command Center)
+
 RadarPro ekosistemi, kurumsal veri platformu standartlarında, 17+ mikroservisin Docker üzerinde orkestre edilmesiyle çalışır. Sistemin kurulumu, veri toplama süreçleri ve otonom döngüleri aşağıda adım adım açıklanmıştır.
 
-1. Pre-Deployment: System Optimization (WSL2 & RAM)
-Sistemi çalıştırmadan önce, Docker'ın (özellikle Windows/WSL2 üzerinde) kaynakları verimli kullanması için şu optimizasyonu manuel olarak veya start_windows.bat üzerinden yapmalısınız:
+## 1. Pre-Deployment: System Optimization (WSL2 & RAM)
 
-Windows Kullanıcıları: %USERPROFILE%\.wslconfig dosyasını şu şekilde yapılandırın:
+Sistemi çalıştırmadan önce, Docker'ın (özellikle Windows/WSL2 üzerinde) kaynakları verimli kullanması için şu optimizasyonu manuel olarak veya `start_windows.bat` üzerinden yapmalısınız:
+
+-   **Windows Kullanıcıları:** `%USERPROFILE%\.wslconfig` dosyasını şu şekilde yapılandırın:
+    
 
 Ini, TOML
+
+```
 [wsl2]
 memory=8GB        # Spark ve Kafka için optimize edilmiş limit
 processors=2      # İşlemci çekirdek sayısı
 swap=4GB          # M2-SSD tabanlı sanal bellek
 autoMemoryReclaim=dropcache
-Yapılandırmadan sonra terminalde wsl --shutdown komutu ile motoru yeniden başlatın.
 
-2. Infrastructure Deployment (Initial Start)
+```
+
+> **Not:** Yapılandırmadan sonra terminalde `wsl --shutdown` komutu ile motoru yeniden başlatın.
+
+----------
+
+## 2. Infrastructure Deployment (Initial Start)
+
 Tüm altyapıyı (Kafka, Spark, MLflow, MinIO, Postgres, Redis vb.) inşa etmek ve servisleri arka planda (detached) başlatmak için:
 
 Bash
+
+```
 docker-compose up -d --build
-Önemli: Bu aşamada 17 servis izole bir data-network ağında birbirine bağlanır. db-init servisi, Postgres'in hazır olmasını bekler ve tabloları otomatik olarak kurmaya başlar.
 
-3. Database Schema Provisioning (V13 God Mode)
-Sistem ayağa kalktığında db-init konteyneri aşağıdaki tabloları ve TimescaleDB Hypertable yapısını otomatik olarak kurar. Manuel müdahale gerekirse şu komutlar kullanılır:
+```
 
-A. Market Data & Hypertable Setup
+**Önemli:** Bu aşamada 17 servis izole bir `data-network` ağında birbirine bağlanır. `db-init` servisi, Postgres'in hazır olmasını bekler ve tabloları otomatik olarak kurmaya başlar.
+
+----------
+
+## 3. Database Schema Provisioning (V13 God Mode)
+
+Sistem ayağa kalktığında `db-init` konteyneri aşağıdaki tabloları ve **TimescaleDB Hypertable** yapısını otomatik olarak kurar. Manuel müdahale gerekirse şu komutlar kullanılır:
+
+#### A. Market Data & Hypertable Setup
+
 SQL
+
+```
 -- TimescaleDB uzantısını etkinleştir ve hypertable oluştur
 CREATE TABLE IF NOT EXISTS market_data (
-    symbol VARCHAR(20), average_price DOUBLE PRECISION, predicted_price DOUBLE PRECISION,
-    volatility DOUBLE PRECISION, volume_usd DOUBLE PRECISION, trade_side VARCHAR(10),
-    vpin_score DOUBLE PRECISION, processed_time TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    symbol VARCHAR(20), 
+    average_price DOUBLE PRECISION, 
+    predicted_price DOUBLE PRECISION,
+    volatility DOUBLE PRECISION, 
+    volume_usd DOUBLE PRECISION, 
+    trade_side VARCHAR(10),
+    vpin_score DOUBLE PRECISION, 
+    processed_time TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
 SELECT create_hypertable('market_data', 'processed_time', if_not_exists => TRUE);
-B. API Users & DaaS Security Table
+
+```
+
+#### B. API Users & DaaS Security Table
+
 SQL
+
+```
 -- Müşteri ve API anahtar yönetim tablosu
 CREATE TABLE IF NOT EXISTS api_users (
-    id SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL, api_key VARCHAR(64) UNIQUE NOT NULL,
-    tier VARCHAR(20) DEFAULT 'FREE', created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY, 
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL, 
+    api_key VARCHAR(64) UNIQUE NOT NULL,
+    tier VARCHAR(20) DEFAULT 'FREE', 
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
-4. Data Ingestion & ETL Operations
-Historical Data ETL (yFinance): Son 10 yıllık borsa verilerini Delta Lake'e (MinIO) indirir.
 
-Bash
-docker exec -it spark-silver python /app/batch_yfinance_etl.py
-Universal Data Ingestion: IoT ve genel veri tiplerini simüle etmek için kullanılır.
+```
 
-Bash
-docker exec -it spark-silver python test_generic.py
-B2B API Simulation: Harici bir kaynaktan API yoluyla veri girişi simüle eder.
+----------
 
-Bash
-python fake_company.py
-5. MLOps: Continuous Training & Hot-Reload
-Full AutoML Engine: Tüm coinler için en iyi modeli (XGBoost/LightGBM) yarıştırır ve MLflow'a kaydeder.
+## 4. Data Ingestion & ETL Operations
 
-Bash
-docker exec -it spark-silver python /app/train_model.py ALL
-ML Watcher (CD Pipeline): Veri biriktikçe eğitimi başlatır ve Redis Pub/Sub üzerinden canlı API'ye RELOAD_MODELS sinyali gönderir.
+-   **Historical Data ETL (yFinance):** Son 10 yıllık borsa verilerini Delta Lake'e (MinIO) indirir.
+    
+    Bash
+    
+    ```
+    docker exec -it spark-silver python /app/batch_yfinance_etl.py
+    
+    ```
+    
+-   **Universal Data Ingestion:** IoT ve genel veri tiplerini simüle etmek için kullanılır.
+    
+    Bash
+    
+    ```
+    docker exec -it spark-silver python test_generic.py
+    
+    ```
+    
+-   **B2B API Simulation:** Harici bir kaynaktan API yoluyla veri girişi simüle eder.
+    
+    Bash
+    
+    ```
+    python fake_company.py
+    
+    ```
+    
 
-Bash
-docker exec -d spark-silver python /app/ml_watcher.py
-Data Quality Gate: Kirli verileri (negatif fiyatlar, null değerler) tarar.
+----------
 
-Bash
-docker exec -it spark-silver python quality_gate.py
-6. Service Management & Maintenance
-Hot Reload (Update): Kod değişikliği sonrası servisi kapatmadan güncelleme:
+## 5. MLOps: Continuous Training & Hot-Reload
 
-Bash
-docker-compose up -d --build dashboard
-Redis Cache Flush: Tüm API limitlerini ve önbelleği sıfırlamak için:
+-   **Full AutoML Engine:** Tüm coinler için en iyi modeli (XGBoost/LightGBM) yarıştırır ve MLflow'a kaydeder.
+    
+    Bash
+    
+    ```
+    docker exec -it spark-silver python /app/train_model.py ALL
+    
+    ```
+    
+-   **ML Watcher (CD Pipeline):** Veri biriktikçe eğitimi başlatır ve **Redis Pub/Sub** üzerinden canlı API'ye `RELOAD_MODELS` sinyali gönderir.
+    
+    Bash
+    
+    ```
+    docker exec -d spark-silver python /app/ml_watcher.py
+    
+    ```
+    
+-   **Data Quality Gate:** Kirli verileri (negatif fiyatlar, null değerler) tarar.
+    
+    Bash
+    
+    ```
+    docker exec -it spark-silver python quality_gate.py
+    
+    ```
+    
 
-Bash
-docker-compose exec redis redis-cli flushall
-Data Lake Cleanup: Delta Lake katmanlarını temizlemek için:
+----------
 
-Bash
-docker exec -it minio mc rm -r --force s3/market-data/raw_layer_delta
+## 6. Service Management & Maintenance
+
+-   **Hot Reload (Update):** Kod değişikliği sonrası servisi kapatmadan güncelleme:
+    
+    Bash
+    
+    ```
+    docker-compose up -d --build dashboard
+    
+    ```
+    
+-   **Redis Cache Flush:** Tüm API limitlerini ve önbelleği sıfırlamak için:
+    
+    Bash
+    
+    ```
+    docker-compose exec redis redis-cli flushall
+    
+    ```
+    
+-   **Data Lake Cleanup:** Delta Lake katmanlarını temizlemek için:
+    
+    Bash
+    
+    ```
+    docker exec -it minio mc rm -r --force s3/market-data/raw_layer_delta
+    ```
 
 ## 📊 Servis ve Altyapı Erişim Matrisi (Eksiksiz Liste)
 
