@@ -27,427 +27,286 @@
 </div>
 
 
-# Enterprise Real-Time Lakehouse & MLOps Platform
+# RadarPro: Real-Time Crypto Intelligence API & MLOps Pipeline
 
 
-## 📖 Proje Özeti ve Vizyonu
+## 📖 RadarPro: Vizyon ve Sistem Felsefesi
 
-**RadarPro**, günümüz finans teknolojilerindeki en büyük darboğazlar olan "yüksek veri gecikmesi" ve "model performans kayıpları" sorunlarını çözmek üzere tasarlanmış uçtan uca (End-to-End) bir **Veri Mühendisliği ve MLOps ekosistemidir.** Bu platform; verinin ham haliyle üretiminden itibaren milisaniyeler içinde yakalanmasını, kurumsal standartlarda (Medallion Architecture) işlenmesini ve otonom yapay zeka modelleriyle bir sonraki periyodun tahmin edilmesini sağlar.
+**RadarPro**, finansal veri ekosistemlerindeki en kritik darboğazlar olan **yüksek veri gecikmesi (latency)** ve **model drift (performans kaybı)** sorunlarını modernize etmek amacıyla geliştirilmiş, uçtan uca bir **Data Engineering ve MLOps platformudur.**
 
-Sistemin temel vizyonu; sadece bir "trading dashboard" sunmak değil, **kendi kendine öğrenen ve iyileşen (Self-Healing & Self-Learning)** bir veri ambarı altyapısı kurmaktır. Geleneksel "Batch" işlemeye dayalı yapıların aksine RadarPro, verinin oluşumu ile terminale yansıması arasındaki süreyi **5 saniyenin altına indirerek** gerçek zamanlı analitiği kurumsal bir standart haline getirir.
+Platformun temel mimarisi, verinin ham kaynaktan (Binance WebSocket) alınmasından itibaren milisaniyeler içinde işlenmesini, **Medallion Architecture (Bronze/Silver/Gold)** standartlarında depolanmasını ve otonom yapay zeka modelleriyle bir sonraki periyodun (fiyat/anomali) tahmin edilmesini kapsar.
+
+## 🎯 Temel Değer Önerileri
+
+-   **Gerçek Zamanlı Karar Destek:** Geleneksel "Batch" işlemeye dayalı hantal yapıların aksine RadarPro, verinin oluşumu ile işlenmiş analitik çıktıya dönüşmesi arasındaki süreyi **5 saniyenin altına indirir.**
+    
+-   **Otonom Sistem Mimarisi:** Sistem sadece veri sunmakla kalmaz; **Self-Healing (Kendi Kendini Onaran)** ve **Self-Learning (Kendi Kendini Eğiten)** yapısıyla, veri hacmi arttıkça modellerini otomatik olarak günceller ve üretim hattına (production) kesintisiz dahil eder.
+    
+-   **Analitik Derinlik:** Sadece fiyat odaklı değil; likidasyon akışları (liquidation clusters), CVD (Cumulative Volume Delta) ve VPIN (Volume-based Probability of Informed Trading) gibi sofistike finansal metrikleri gerçek zamanlı hesaplayarak kurumsal düzeyde bir veri ambarı sunar
 
 ----------
 
-### 🌟 Mühendislik ve Tasarımın Temel Direkleri
+🌟 Mühendislik ve Tasarımın Temel Direkleri
+⚡ 1. Ultra-Düşük Gecikmeli Veri Akış Hattı (V28 God Mode Ingestion)
+Sistem, Binance Futures WebSocket katmanından 25 farklı kripto varlığın anlık işlemlerini (Trade), Emir Defteri (Depth) derinliğini ve Likidasyon verilerini asenkron olarak tüketir. Apache Kafka; yüksek sıkıştırma (gzip), lider onayı (acks=1) ve 1000 mesajlık tetikleyici (maxOffsetsPerTrigger) stratejisiyle veriyi kayıpsız iletir. Bu yapı, ham verinin milisaniyeler içinde işleme katmanına ulaşmasını sağlar.
 
-#### ⚡ 1. Ultra-Düşük Gecikmeli Veri Akış Hattı (Low Latency Ingestion)
+🚀 2. Model-as-a-Service (MaaS) ve Redis Tabanlı RAM Optimizasyonu
+Finansal veri işlemede en büyük maliyet kalemi olan RAM tüketimi, akıllı bir mikroservis ayrımıyla çözülmüştür. Spark motoru üzerindeki ağır çıkarım (inference) yükü, asenkron bir FastAPI çıkarım motoruna (inference_api.py) devredilmiştir. Bu MaaS yaklaşımı, toplam RAM ihtiyacını %60 oranında azaltırken, Redis Pub/Sub üzerinden model senkronizasyonu sağlayarak binlerce tahmini eşzamanlı sunar.
 
-Sistem, Binance WebSocket katmanından 25 farklı kripto varlığın canlı "Trade" verisini asenkron olarak tüketir. Apache Kafka, bu verileri yüksek sıkıştırma oranları (`gzip`) ve lider onayı (`acks=1`) stratejisiyle brokerlarına dağıtır. Bu yapı, saniyede binlerce işlemin kayıpsız ve milisaniyelik gecikmelerle işleme katmanına iletilmesini garanti eder.
+🧠 3. Bilimsel Tahminleme ve Gelişmiş Finansal Metrikler
+Sistem, “Data Leakage” (Veri Sızıntısı) riskini Target Shifting ile engellemenin ötesine geçmiştir. Fiyat tahminine ek olarak; CVD (Cumulative Volume Delta), VPIN (Volume-based Probability of Informed Trading) ve Wall Imbalance gibi kurumsal düzeyde metrikler gerçek zamanlı olarak hesaplanır. Ayrıca, türev piyasalar için kritik olan Likidasyon Mıknatısları (10x-100x) otonom olarak belirlenir.
 
-#### 🚀 2. Model-as-a-Service (MaaS) ve RAM Optimizasyonu
+🔄 4. Otonom CD Döngüsü ve Redis Pub/Sub Sync
+Platform, ML Watcher modülü sayesinde başında bir operatör beklemeden 7/24 otonom çalışır. Delta Lake’de yeterli eşik (MIN_ROWS_TO_START) geçildiğinde eğitim tetiklenir. Yeni model MLflow’da tescillendikten sonra Redis üzerinden RELOAD_MODELS sinyali gönderilir; böylece tüm API worker’ları sıfır kesintiyle en güncel modele geçer.
 
-Finansal veri işlemede en büyük maliyet kalemi olan RAM tüketimi, akıllı bir mikroservis ayrımıyla çözülmüştür. Spark Streaming motoru üzerindeki ağır makine öğrenmesi (inference) yükü sökülerek, hafif bir **FastAPI çıkarım motoruna (`inference_api.py`)** devredilmiştir. Bu MaaS (Model-as-a-Service) yaklaşımı sayesinde, sistemin toplam RAM ihtiyacı **15 GB seviyesinden 6 GB'a düşürülerek %60 operasyonel verimlilik** elde edilmiştir.
+🛡️ 5. Z-Score Tabanlı Anomali ve Manipülasyon Dedektörü
+RadarPro, veriyi sadece işlemez, aynı zamanda denetler. Z-Score Anomali Dedektörü sayesinde; hacim patlamaları (Wash Trading) ve sahte duvarlar (Spoofing) saniyeler içinde tespit edilir. Data Quality Gate modülü ise hatalı verilerin modellere sızmasını engelleyerek tahmin doğruluğunu “saf veri” üzerinden korur.
 
-#### 🧠 3. Bilimsel Tahminleme ve Veri Sızıntısı (Data Leakage) Koruması
+🖥️ 6. Hibrit Terminal ve Kurumsal API Gateway
+Kullanıcı deneyimi ikiye ayrılmıştır:
 
-Akademik başarı için sistem, finansal modellerin kronik sorunu olan "geleceği geçmişe karıştırma" (Data Leakage) hatasını matematiksel olarak engeller. Model eğitimi sırasında **zamansal kaydırma (`shift(-1)`)** tekniği kullanılarak, algoritmaların o anki fiyatı değil, tam olarak **bir sonraki periyodun (geleceğin)** fiyatını tahmin etmesi sağlanmıştır.
+DaaS API Gateway: VIP/FREE katmanları için özelleştirilmiş, Redis tabanlı Rate Limiting ve Auth katmanına sahip kurumsal API hizmeti.
 
-#### 🔄 4. Otonom CD Döngüsü ve Sıfır Kesinti (Zero-Downtime Hot Reload)
+Pro Terminal: Streamlit ve Electron tabanlı, profesyonel trader’lar için milisaniyelik hassasiyetle görselleştirme sunan masaüstü ve web arayüzü.
 
-Platform, başında bir operatör beklemeden 7/24 otonom çalışacak şekilde kurgulanmıştır. **ML Watcher** modülü, Delta Lake (MinIO) üzerindeki veri hacmini sürekli tarar; yeterli eşiğe (`MIN_ROWS_TO_START`) ulaşıldığında eğitimi tetikler. Yeni model MLflow'da tescillendikten sonra, canlıdaki API'ye `/reload` sinyali gönderilerek eski model RAM'den temizlenir ve sistem duraksamadan güncel modele geçer.
+🛡️ Redis: Distributed Control Plane (Merkezi Kontrol Düzlemi)
+Sistemde Redis, sadece bir önbellek değil; güvenliği, hız sınırlamasını, anlık anomali skorlarını ve modellerin canlı senkronizasyonunu yöneten Merkezi Kontrol Düzlemi olarak konumlandırılmıştır.
 
-#### 🛡️ 5. Kurumsal Güvenlik, Hız Sınırı ve Veri Kalitesi
+⚙️ Temel Özellikler ve Mimari Çözümler
+Dağıtık Hız Sınırlama (Distributed Rate Limiting): API Gateway’in yatayda ölçeklenebilir (multi-node) yapısı nedeniyle, kullanıcı istek sayıları yerel bellekte değil, Redis üzerinde Atomic Counters kullanılarak takip edilir. Bu sayede kullanıcı, farklı API instance’larına istek atsa dahi toplam limiti (VIP için saniyede 50, Premium için 10 istek) merkezi olarak korunur.
 
-Sistem, hem VIP hem de FREE kullanıcılar için optimize edilmiş bir **API Gateway** mimarisine sahiptir. VIP kullanıcılar milisaniyelik Kafka akışlarına WebSocket üzerinden erişebilirken, sistem **Rate Limiting** motoru ile suistimalleri engeller. Ayrıca, **Data Quality Gate** modülü ile bozuk verilerin modellere sızması engellenerek tahmin doğruluğu "saf veri" (clean data) üzerinden korunur.
+Otonom Ban ve Kota Mekanizması: Ücretsiz (FREE) katmandaki kullanıcılar için günlük 1000 istek sınırı belirlenmiştir. Redis, bu sınırı aşan anahtarları otomatik olarak tespit eder, ban:email anahtarı ile işaretler ve kullanıcıyı kalıcı olarak sistemden uzaklaştırır.
 
-#### 🖥️ 6. Hibrit Terminal Deneyimi (Web, Mobile & Desktop)
+Tier-Based Access Control (DaaS Logic):
 
-Kullanıcı arayüzü sadece bir web sitesi değil, bir ekosistemdir. **Streamlit** ile kurumsal yönetim paneli ve altyapı izleme süreçleri yönetilirken, **Electron** tabanlı masaüstü uygulaması profesyonel trader'lar için düşük gecikmeli bir masaüstü deneyimi sunar. 
-Pro Terminal, HFT (High Frequency Trading) verilerini milisaniyelik hassasiyetle görselleştirir.
+VIP/PREMIUM Tier: Gerçek zamanlı Kafka/WebSocket akışına erişim, sınırsız geçmiş veri indirme ve yapay zeka (ML) tahminlerini içeren tam yetkili erişim.
 
-#### 🛡️ Redis - Distributed Control Plane & Security Layer
+FREE Tier: 24 saatlik geçmiş veriyle sınırlı, yapay zeka tahminlerinden arındırılmış ve kotalı erişim.
 
-Sistemde **Redis**, sadece bir önbellek (cache) olarak değil; API katmanında güvenliği, hız sınırlamasını (rate limiting) ve kullanıcı yetkilendirmesini yöneten bir **"Merkezi Kontrol Düzlemi"** olarak konumlandırılmıştır.
+Ultra-Düşük Gecikmeli Doğrulama (In-Memory Auth): Her API isteğinde ana veritabanına (PostgreSQL) yük bindirmek yerine, API Key yetki kontrolleri ve hız limitleri Redis üzerinden RAM hızında (<1ms) gerçekleştirilerek sistem darboğazları önlenir.
 
-### ⚙️ Temel Özellikler ve Mimari Çözümler
+🧠 Neden Redis? (Mimari Tercih)
+Bir Veri Mühendisi olarak sistemin stateless (durumsuz) kalması, yatayda büyüme (scaling) için zorunluluktur. Redis kullanımıyla sağlanan avantajlar şunlardır:
 
--   **Dağıtık Hız Sınırlama (Distributed Rate Limiting):** API Gateway'in yatayda ölçeklenebilir (multi-node) yapısı nedeniyle, kullanıcı istek sayıları yerel bellekte değil, Redis üzerinde **Atomic Counters** kullanılarak takip edilir. Bu sayede kullanıcı, farklı API sunucularına istek atsa dahi toplam limiti (saniyede 5 istek) senkronize bir şekilde korunur.
-    
--   **Otonom Ban Mekanizması (Automatic Blacklisting):** Ücretsiz (FREE) katmandaki kullanıcılar için günlük **3 istek** sınırı belirlenmiştir. Redis, bu sınırı aşan API anahtarlarını anında tespit eder ve merkezi bir **Blacklist** (Kara Liste) oluşturarak kullanıcıyı kalıcı olarak sistemden uzaklaştırır.
-    
--   **Tier-Based Access Control (DaaS Logic):** * **VIP Tier:** Gerçek zamanlı (WebSocket), sınırsız ve tahmin (ML) verisi içeren erişim.
-    
-    -   **FREE Tier:** 5 dakika gecikmeli, kısıtlı veri seti (Symbol, Price, Time) ve kotalı erişim.
-        
--   **Düşük Gecikmeli Doğrulama (Ultra-Low Latency):** Her API isteğinde ana veritabanına (Postgres) yük bindirmek yerine, yetki ve limit kontrolleri Redis üzerinden **RAM hızında (<1ms)** gerçekleştirilir.
-    
+High Availability (Yüksek Erişilebilirlik): API sunucuları çökse veya yeniden başlasın, kullanıcı limitleri ve ban listeleri merkezi RAM katmanında korunduğu için veri kaybı yaşanmaz.
 
-### 🧠 Neden Redis? (Mimari Tercih)
+Consistency (Tutarlılık): Dağıtık mimaride tüm Gateway’ler için tek bir “Doğruluk Kaynağı” (Single Source of Truth) oluşturulur.
 
-Bir Data Engineer olarak, sistemin **stateless** (durumsuz) olması gerektiğini savundum. Eğer limit bilgilerini API'nin kendi içinde tutsaydım, sunucu çöktüğünde veya yenisi açıldığında tüm kullanıcı hakları sıfırlanırdı. Redis kullanımıyla:
-
-1.  **High Availability (Yüksek Erişilebilirlik):** API sunucuları değişse bile sistem hafızası korunur.
-    
-2.  **Consistency (Tutarlılık):** Tüm ağ genelinde tek bir "doğruluk kaynağı" (Source of Truth) oluşturulur.
-    
-3.  **Database Protection:** Ana veritabanı (Postgres), gereksiz "limit kontrol" sorgularından arındırılarak sadece operasyonel veriye odaklanması sağlanır.
-
-<img width="2816" height="1536" alt="Architecture" src="https://github.com/user-attachments/assets/0d3cabf3-f35d-4d77-ad85-a01477a16265" />
-
-
-
+Database Protection: Operasyonel veritabanı (PostgreSQL), her saniye gelen binlerce limit kontrol sorgusundan arındırılarak sadece kalıcı finansal veriye odaklanması sağlanır.
 ---
+
 
 ## 📂 Proje Yapısı (Core Backend & Infrastructure)
 
-RadarPro ekosistemi, **Separation of Concerns (Sorumlulukların Ayrılması)** prensibine uygun olarak modüler bir klasör yapısına sahiptir. Her bir bileşen, sistemin bütününe hizmet eden bağımsız bir mikroservis veya yardımcı araçtır.
+RadarPro ekosistemi, **Separation of Concerns** prensibine uygun olarak modüler bir mikroservis mimarisiyle kurgulanmıştır. Her bileşen, sistemin bütününe hizmet eden bağımsız bir servis olarak tasarlanmıştır.
 
 Plaintext
 
 ```
-├── dashboard_app/              # 🎛️ System Control Plane (Streamlit UI)
-│   ├── Home.py                  # Platform Ana Giriş ve Altyapı Telemetrisi
-│   ├── utils.py                 # CSS Enjeksiyonu, S3 Cache ve Failover Bağlantıları
-│   ├── _Canli_Piyasa.py         # Real-Time Kafka Akışı ve Teknik Analiz Görselleştirme
-│   ├── Gecmis_Analiz.py         # Delta Lake Arşivi Üzerinden Batch Analiz ve Korelasyon
-│   ├── _MLOps_Center.py         # MLflow Model Registry ve AutoML Liderlik Tablosu
-│   ├── _Harici_Baglanti.py      # Universal Data Gateway Yönetim Arayüzü
-│   ├── _Sistem_Yonetimi.py      # Docker Konteyner Kontrolü ve Veri Bakımı (Optimize/Vacuum)
-│   └── KAFDROP.py               # Kafka Universal Data Deck ve Mesaj İzleme
+├── dashboard_app/              # 🎛️ Internal Control Plane (PoC Showcase)
+│   ├── Home.py                  # Platform Ana Giriş ve Altyapı Telemetrisi 
+│   ├── utils.py                 # CSS Enjeksiyonu ve S3/Postgres Bağlantı Cache Katmanı 
+│   ├── _Canli_Piyasa.py         # Real-Time Kafka & V28 God Mode Görselleştirme 
+│   ├── Gecmis_Analiz.py         # Delta Lake Arşivi Üzerinden Batch Analiz ve Korelasyon 
+│   ├── _MLOps_Center.py         # MLflow Model Registry ve AutoML Liderlik Tablosu 
+│   └── _Sistem_Yonetimi.py      # Docker Konteyner Kontrolü ve Maintenance (Optimize/Vacuum) 
 │
-├── tests/                      # 🧪 Kalite Güvence ve Test Katmanı
-│   ├── test_core.py             # Çekirdek Sistem Fonksiyonlarının Birim Testleri
-│   └── test_generic.py          # Schema-Agnostic Veri Girişi ve IoT Simülasyon Testleri
+├── ingestion_layer/            # 📡 Data Gateway & Ingestion Services
+│   ├── producer.py              # Binance WebSocket - High-Frequency Ingestion Motoru 
+│   ├── universal_producer.py    # Schema-Agnostic / IoT / Log Veri Simülatörü 
+│   ├── ingestion_api.py         # Enterprise API Gateway (VIP/FREE Auth & Rate Limiting) 
+│   └── fake_company.py          # B2B Şirket Verisi Simülasyonu (REST API Client) 
 │
-├── ingestion_layer/            # 📡 Veri Giriş ve Güvenlik Servisleri
-│   ├── producer.py              # Binance WebSocket - High-Frequency Ingestion Motoru
-│   ├── universal_producer.py    # Schema-Agnostic / IoT / Log Veri Simülatörü
-│   ├── ingestion_api.py         # Enterprise API Gateway (VIP/FREE Auth & Rate Limiting)
-│   ├── api_key_manager.py       # API Key Lifecycle (Üretim ve Doğrulama) Yönetimi
-│   ├── bulk_keygen.py           # Toplu VIP Müşteri ve API Key Provisioning Aracı
-│   └── fake_company.py          # B2B Şirket Verisi Simülasyonu (REST API Client)
+├── processing_layer/           # ⚙️ Big Data Processing & Lakehouse Architecture
+│   ├── consumer_lake.py         # Bronze Layer (Raw Archive) Spark Streaming Tüketicisi 
+│   ├── process_silver.py        # Silver Layer (V28 God Mode) - Feature Engineering & Anomaly Detector 
+│   ├── batch_processor.py       # Geçmişe Dönük CSV ETL ve Data Sanitization Motoru 
+│   └── batch_yfinance_etl.py    # yFinance Bridge - 10 Yıllık Tarihsel Veri Aktarıcı 
 │
-├── processing_layer/           # ⚙️ Veri İşleme ve Lakehouse Mimari
-│   ├── consumer_lake.py         # Bronze Layer (Raw Archive) Spark Streaming Tüketicisi
-│   ├── process_silver.py        # Silver Layer (Feature Engineering) & MaaS Entegrasyonu
-│   ├── batch_processor.py       # Geçmişe Dönük CSV ETL ve Data Sanitization Motoru
-│   ├── batch_user_processor.py  # Kullanıcı Bazlı Analitik Veri İşleme Servisi
-│   └── batch_yfinance_etl.py    # yFinance Bridge - 10 Yıllık Tarihsel Veri Aktarıcı
+├── mlops_layer/                # 🧠 Artificial Intelligence & Autonomous MLOps
+│   ├── inference_api.py         # FastAPI MaaS Engine (Milisaniyelik AI Tahmin Servisi) 
+│   ├── train_model.py           # XGBoost + LightGBM AutoML Fabrikası 
+│   ├── ml_watcher.py            # Otonom Continuous Training (CT) ve Hot-Reload Orkestratörü 
+│   └── quality_gate.py          # Data Quality Gate (Model Öncesi Veri Güvenlik Kapısı) 
 │
-├── mlops_layer/                # 🧠 Yapay Zeka ve Otonom MLOps Döngüsü
-│   ├── inference_api.py         # FastAPI MaaS Engine (Milisaniyelik AI Tahmin Servisi)
-│   ├── train_model.py           # Scikit-Learn + XGBoost + LightGBM AutoML Fabrikası
-│   ├── ml_watcher.py            # Otonom Continuous Training (CT) ve Hot-Reload Orkestratörü
-│   └── quality_gate.py          # Data Quality Gate (Model Öncesi Veri Güvenlik Kapısı)
-│
-├── devops_config/              # 🐳 Konteyner Orkestrasyonu ve İzleme
-│   ├── docker-compose.yaml      # 17+ Mikroservisin Global Orkestrasyon Dosyası
-│   ├── Dockerfile.spark         # Apache Spark & Delta Lake Optimize Edilmiş İmaj
-│   ├── Dockerfile.api           # FastAPI & Ingestion Gateway İmajı
-│   ├── Dockerfile.ui            # Streamlit Dashboard & System Plane İmajı
-│   ├── .env                     # Global Şifreleme ve Çevresel Değişkenler (Şablon)
-│   ├── prometheus.yml           # Altyapı Metrik Toplama Yapılandırması
-│   ├── start_windows.bat        # Windows DevOps Command Center (Otomasyon Scripti)
-│   └── start_unix.sh            # Unix/Mac Kararlı Dağıtım ve Yönetim Scripti
-└── readme.md                   # Proje Teknik Dokümantasyonu (Ana Rehber)
+├── devops_config/              # 🐳 Container Orchestration & Monitoring
+│   ├── docker-compose.yaml      # 15+ Mikroservisin Global Orkestrasyonu 
+│   ├── Dockerfile.spark         # Apache Spark & Delta Lake Optimize Edilmiş İmaj 
+│   ├── Dockerfile.api           # FastAPI & Ingestion Gateway İmajı [cite: 
+│   ├── Dockerfile.ui            # Streamlit Dashboard İmajı 
+│   ├── prometheus.yml           # Altyapı Metrik Toplama Yapılandırması 
+│   └── start_unix.sh            # Unix/Mac DevOps Command Center Scripti 
+└── readme.md                   # Proje Teknik Dokümantasyonu (Ana Rehber) 
 
 ```
 
 ----------
 
-> **💡 Mühendislik Notu:** Bu yapı, **Medallion Architecture** prensiplerine göre kurgulanmış olup; verinin ham haliyle girdiği (Ingestion), işlendiği (Processing) ve zekaya dönüştüğü (MLOps) katmanlar birbirinden fiziksel ve mantıksal olarak tamamen izole edilmiştir.
+> **💡 Mühendislik Notu:** Bu yapı, **Medallion Architecture** prensiplerine göre kurgulanmıştır. Verinin ham haliyle girdiği (Ingestion), analitik metriklerin ve anomalilerin hesaplandığı (Processing) ve otonom zekaya dönüştüğü (MLOps) katmanlar birbirinden fiziksel olarak izole edilmiştir. Bu izolasyon, sistemin herhangi bir katmanının diğerini etkilemeden bağımsız olarak ölçeklenmesini (Horizontal Scaling) sağlar.
+
 
 
 
 ## 🏗️ Mimari Tasarım (Architecture)
 
-RadarPro ekosistemi, **Veri Mühendisliği (Data Engineering)** ve **MLOps** prensiplerine tam uyumlu olarak tasarlanmıştır. Her Python modülü, kurumsal ölçekli veri platformlarında karşılaşılan spesifik darboğazları (bottlenecks) aşmak üzere özelleştirilmiş bir göreve sahiptir:
+RadarPro ekosistemi, **Veri Mühendisliği (Data Engineering)** ve **MLOps** prensiplerine tam uyumlu, dağıtık bir mikroservis yapısıyla tasarlanmıştır. Her modül, kurumsal veri platformlarında karşılaşılan ölçeklenebilirlik ve gecikme darboğazlarını aşmak için optimize edilmiştir:
 
-### 1. Veri Kaynağı ve İletişim Katmanı (Ingestion & Pub/Sub Layer)
+## 1. Veri Kaynağı ve İletişim Katmanı (Ingestion & Pub/Sub Layer)
 
--   **`producer.py` (Binance WebSocket Connector):**
+-   **`producer.py` (Binance Futures Connector):**
     
-    -   **Heartbeat & Resilience:** Ağ kopmalarına karşı `ws.run_forever(ping_interval=70, ping_timeout=10)` mekanizmasıyla kesintisiz bir bağlantı hattı kurar.
+    -   **Resilience:** Ağ kopmalarına karşı `ping_interval` mekanizmasıyla kesintisiz bir WebSocket hattı kurar.
         
-    -   **High-Volume Streaming:** Binance üzerinden 25 farklı varlığın canlı trade verisini asenkron olarak toplar ve `gzip` sıkıştırma ile Kafka brokerlarına iletir.
+    -   **Multi-Asset Ingestion:** 25 farklı kripto varlığın anlık işlem, emir defteri derinliği ve likidasyon verilerini asenkron olarak toplar ve Kafka'ya `gzip` sıkıştırma ile iletir.
         
 -   **`universal_producer.py` (Schema-Agnostic Engine):**
     
-    -   **Universal Ingestion:** Projenin sadece finans odaklı olmadığını kanıtlayan modüldür. IoT sensörleri, log verileri ve web trafik verilerini sistemin anlayabileceği ortak bir şemaya (`Generic_Data`) normalize eder.
-        
-    -   **Dynamic Source Simulation:** Farklı frekanslarda veri üreten kaynakları taklit ederek sistemin yük kapasitesini test eder.
+    -   **Generic Ingestion:** Finans dışı verileri (IoT, Log) sistemin anlayabileceği ortak bir şemaya normalize ederek platformun esnekliğini kanıtlar.
         
 -   **`fake_company.py` (B2B Data Simulation):**
     
-    -   **Tenant Simulation:** Harici bir şirketin (Örn: Tesla Factory) veri üretim hattını simüle eder ve veriyi WebSocket yerine doğrudan **Ingestion API** üzerinden sisteme enjekte eder.
+    -   **Tenant Simulation:** Harici şirketlerin veri üretim hattını taklit ederek veriyi doğrudan **Ingestion API** üzerinden sisteme enjekte eder.
         
 
-### 2. Güvenlik ve API Geçit Katmanı (Security & Gateway Layer)
+## 2. Güvenlik ve API Geçit Katmanı (Security & Gateway Layer)
 
 -   **`ingestion_api.py` (Enterprise Data Gateway):**
     
-    -   **Freemium/VIP Logic:** Kullanıcıların API anahtarlarını kontrol ederek, yetkilerine göre (FREE/VIP) farklı veri akış hızları ve içerikleri sunar.
+    -   **DaaS Logic:** Redis tabanlı **Rate Limiting** ve **Auth** katmanı ile FREE/VIP kullanıcılar için özelleştirilmiş veri erişimi sağlar.
         
-    -   **Rate Limiting & Pub/Sub:** Gelen istekleri denetler ve VIP kullanıcılara özel düşük gecikmeli **Kafka WebSocket Stream** bağlantıları sağlar.
+    -   **Real-Time Broadcast:** VIP kullanıcılara özel, düşük gecikmeli Kafka akışlarını WebSocket üzerinden anlık yayınlar.
         
--   **`api_key_manager.py` & `bulk_keygen.py` (Credential Management):**
+-   **`bulk_keygen.py` (Credential Provisioning):**
     
-    -   **Secret Management:** `sk_live_...` formatında kırılması imkansız 64-karakterlik API anahtarları üretir ve PostgreSQL (TimescaleDB) tabanlı güvenlik tablosunda yönetir.
-        
-    -   **Automated Provisioning:** Toplu kullanıcı oluşturma ve yetkilendirme süreçlerini otomatize ederek SaaS operasyonlarını hızlandırır.
+    -   **Security Management:**  `sk_live_...` formatında 64 karakterlik kriptografik API anahtarları üreterek SaaS operasyonlarını yönetir.
         
 
-### 3. Veri Gölü ve İşleme Katmanı (Lakehouse & Processing Layer)
+## 3. Veri Gölü ve İşleme Katmanı (Lakehouse & Processing Layer)
 
--   **`consumer_lake.py` (Bronze Layer Ingestion):**
+-   **`consumer_lake.py` (Bronze Layer - Raw Archive):**
     
-    -   **Dumb Consumer Pattern:** Kafka'daki veriyi hiçbir ayrıştırma işlemine sokmadan doğrudan `string` olarak Delta Lake'e (MinIO) arşivler. Bu, olası şema değişikliklerinde (Schema Evolution) veri kaybı riskini ortadan kaldırır.
+    -   **Schema-on-Read:** Kafka verisini ayrıştırmadan "Raw" (ham) haliyle Delta Lake'e arşivleyerek şema değişikliklerine karşı koruma sağlar.
         
-    -   **Backpressure Management:** `maxOffsetsPerTrigger=1000` parametresi ile veri patlamalarında sistemin kaynak tüketimini sabit tutar.
+    -   **Backpressure Control:**  `maxOffsetsPerTrigger` parametresiyle veri patlamalarında sistemin çökmesini engeller.
         
--   **`process_silver.py` (Spark Streaming Core):**
+-   **`process_silver.py` (V28 God Mode Core):**
     
-    -   **Window Aggregation:** 30 saniyelik pencerelerde (Sliding Windows) volatilite, işlem hacmi ve ağırlıklı ortalama fiyatlar gibi kompleks metrikleri saniyeler içinde hesaplar.
+    -   **Advanced Analytics:** Sliding Windows kullanarak **CVD**, **VPIN** ve **Anomali Skorlarını** (Z-Score) saniyeler içinde hesaplar.
         
-    -   **Polyglot Persistence:** İşlenmiş veriyi eşzamanlı olarak hem analitik katmana (Delta Lake) hem de operasyonel raporlama katmanına (TimescaleDB) asenkron olarak yazar.
+    -   **Polyglot Persistence:** İşlenmiş veriyi analitik için Delta Lake'e, operasyonel raporlama için TimescaleDB'ye eşzamanlı yazar.
         
--   **`batch_processor.py` & `batch_user_processor.py` (Batch ETL Services):**
+-   **`batch_yfinance_etl.py` (Historical Bridge):**
     
-    -   **Data Sanitization:** Kullanıcılar tarafından yüklenen CSV dosyalarını tarar, Türkçe karakterleri ve hatalı sütun isimlerini Regex tabanlı temizleyerek Lakehouse standartlarına uyarlar.
-        
-    -   **User Data Analytics:** Kullanıcıların kendi yüklediği verileri de sisteme dahil ederek **Gold Layer** (Analitik Katman) analizi için hazır hale getirir.
-        
--   **`batch_yfinance_etl.py` (Historical Data Bridge):**
-    
-    -   **Backtesting Infrastructure:** Yapay zeka eğitiminde kullanılmak üzere Yahoo Finance üzerinden 2 yıllık saatlik ve 10 yıllık günlük geçmiş verileri çekerek Delta Lake ambarını zenginleştirir.
+    -   **Backtesting Infrastructure:** Yahoo Finance üzerinden 10 yıllık tarihsel veriyi çekerek Delta Lake ambarını zenginleştirir.
         
 
-### 4. Otonom MLOps ve AI Katmanı (Intelligence Layer)
+## 4. Otonom MLOps ve AI Katmanı (Intelligence Layer)
 
 -   **`inference_api.py` (FastAPI MaaS Engine):**
     
-    -   **Model-as-a-Service (MaaS):** Spark Streaming üzerindeki ağır makine öğrenmesi yükünü alarak RAM tüketimini **%60 optimize eden** çıkarım motorudur. MLflow'dan en güncel "Production" modelini RAM'e yükler ve milisaniyelik tahminler döner.
+    -   **RAM Optimization:** Spark üzerindeki çıkarım yükünü devralarak sistem belleğini **%60 optimize eder** ve milisaniyelik tahminler sunar.
         
 -   **`train_model.py` (AutoML Factory):**
     
-    -   **Algorithm League:** XGBoost, LightGBM ve GradientBoosting algoritmalarını her varlık için birbiriyle yarıştırır. En düşük **RMSE** değerine sahip şampiyon modeli otomatik seçer.
-        
-    -   **Data Leakage Fix:** Zaman serisi verilerinde en büyük hata olan "gelecek verisinin sızması" sorununu **Target Shifting (`shift(-1)`)** tekniğiyle tamamen çözmüştür.
+    -   **Algorithm League:** XGBoost ve LightGBM algoritmalarını yarıştırarak her varlık için en düşük **RMSE** değerine sahip modeli seçer.
         
 -   **`ml_watcher.py` (CD Orchestrator):**
     
-    -   **Autonomous Lifecycle:** Veri gölündeki büyüme hızını izler. Yeterli veri biriktiğinde eğitimi tetikler ve eğitim bitince canlıdaki Inference API'ye `/reload` sinyali göndererek sistemi durdurmadan yeni modeli devreye alır.
+    -   **Autonomous Lifecycle:** Veri gölündeki büyümeyi izler, eğitimi tetikler ve **Redis Pub/Sub** üzerinden API'ye model yenileme sinyali gönderir.
         
 
-### 5. İzleme, Kalite ve Kontrol (Governance Layer)
+## 5. İzleme, Kalite ve Kontrol (Governance Layer)
 
--   **`quality_gate.py` (Offline Data Quality Guard):**
+-   **`quality_gate.py` (Data Quality Guard):**
     
-    -   **Data Reliability:** Makine öğrenmesi öncesinde Delta Lake'i tarar; negatif fiyatlar, boş (Null) volatilite verileri veya bozuk zaman damgaları gibi "kirli verileri" raporlayarak model doğruluğunu garanti eder.
+    -   **Reliability:** ML eğitimi öncesinde negatif fiyatlar veya bozuk zaman damgaları gibi "kirli verileri" filtreler.
         
--   **`Home.py` & Streamlit Module Ecosystem (Control Plane):**
+-   **`Home.py` & Dashboard Ecosystem (Control Plane):**
     
-    -   **Infrastructure Telemetry:** `psutil` entegrasyonu ile sunucunun RAM/CPU durumunu, `docker-py` ile konteynerlerin durumunu canlı olarak terminal üzerinden yönetir.
-        
-    -   **Interactive Analysis:** `_Canli_Piyasa.py` ve `Gecmis_Analiz.py` modülleri ile hem Kafka akışını hem de 10 yıllık Delta Lake arşivi üzerinde kompleks SQL sorgularını görselleştirir.
-## 🛠️ Setup & Operations Guide (DevOps Command Center)
-
+    -   **Infrastructure Telemetry:** Sunucu kaynaklarını ve konteyner durumlarını canlı izleyerek sistemin operasyonel sağlığını yönetir.
+      
+🛠️ Setup & Operations Guide (DevOps Command Center)
 RadarPro ekosistemi, kurumsal veri platformu standartlarında, 17+ mikroservisin Docker üzerinde orkestre edilmesiyle çalışır. Sistemin kurulumu, veri toplama süreçleri ve otonom döngüleri aşağıda adım adım açıklanmıştır.
 
-### 1. Pre-Deployment: System Optimization (WSL2 & RAM)
+1. Pre-Deployment: System Optimization (WSL2 & RAM)
+Sistemi çalıştırmadan önce, Docker'ın (özellikle Windows/WSL2 üzerinde) kaynakları verimli kullanması için şu optimizasyonu manuel olarak veya start_windows.bat üzerinden yapmalısınız:
 
-Sistemi çalıştırmadan önce, Docker'ın (özellikle Windows/WSL2 üzerinde) kaynakları verimli kullanması için şu optimizasyonu manuel olarak veya `start_windows.bat` üzerinden yapmalısınız:
+Windows Kullanıcıları: %USERPROFILE%\.wslconfig dosyasını şu şekilde yapılandırın:
 
--   **Windows Kullanıcıları:** `%USERPROFILE%\.wslconfig` dosyasını şu şekilde yapılandırın:
-    
-    Ini, TOML
-    
-    ```
-    [wsl2]
-    memory=6GB        # Spark ve Kafka için ideal limit
-    processors=2      # İşlemci çekirdek sayısı
-    swap=4GB          # M2-SSD tabanlı sanal bellek
-    autoMemoryReclaim=dropcache
-    
-    ```
-    
--   Yapılandırmadan sonra terminalde `wsl --shutdown` komutu ile motoru yeniden başlatın.
-    
+Ini, TOML
+[wsl2]
+memory=8GB        # Spark ve Kafka için optimize edilmiş limit
+processors=2      # İşlemci çekirdek sayısı
+swap=4GB          # M2-SSD tabanlı sanal bellek
+autoMemoryReclaim=dropcache
+Yapılandırmadan sonra terminalde wsl --shutdown komutu ile motoru yeniden başlatın.
 
-----------
-
-### 2. Infrastructure Deployment (Initial Start)
-
-Tüm altyapıyı (Kafka, Spark, MLflow, MinIO, Postgres vb.) inşa etmek ve servisleri arka planda (detached) başlatmak için:
+2. Infrastructure Deployment (Initial Start)
+Tüm altyapıyı (Kafka, Spark, MLflow, MinIO, Postgres, Redis vb.) inşa etmek ve servisleri arka planda (detached) başlatmak için:
 
 Bash
-
-```
 docker-compose up -d --build
+Önemli: Bu aşamada 17 servis izole bir data-network ağında birbirine bağlanır. db-init servisi, Postgres'in hazır olmasını bekler ve tabloları otomatik olarak kurmaya başlar.
 
-```
+3. Database Schema Provisioning (V13 God Mode)
+Sistem ayağa kalktığında db-init konteyneri aşağıdaki tabloları ve TimescaleDB Hypertable yapısını otomatik olarak kurar. Manuel müdahale gerekirse şu komutlar kullanılır:
 
-_Bu aşamada 17 servis izole bir ağda birbirine bağlanır. Postgres'in hazır olması için sistem otomatik olarak 15 saniye bekleyecektir._
-
-----------
-
-### 3. Database Schema Provisioning (Kritik İlk Kurulum)
-
-Sistem ayağa kalktıktan sonra, verinin kaydedileceği **TimescaleDB Hypertables** ve kullanıcıların yetkilendirileceği **Security** tabloları manuel olarak tetiklenmelidir:
-
-#### A. Market Data & Time-Series Engine
-
-Bash
-
-```
-docker exec -it postgres psql -U admin_lakehouse -d market_db -c "
+A. Market Data & Hypertable Setup
+SQL
+-- TimescaleDB uzantısını etkinleştir ve hypertable oluştur
 CREATE TABLE IF NOT EXISTS market_data (
-    symbol VARCHAR(20),
-    average_price DOUBLE PRECISION,
-    predicted_price DOUBLE PRECISION,
-    volatility DOUBLE PRECISION,
-    volume_usd DOUBLE PRECISION,    
-    is_buyer_maker BOOLEAN,
-    trade_side VARCHAR(10),          
-    processed_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    symbol VARCHAR(20), average_price DOUBLE PRECISION, predicted_price DOUBLE PRECISION,
+    volatility DOUBLE PRECISION, volume_usd DOUBLE PRECISION, trade_side VARCHAR(10),
+    vpin_score DOUBLE PRECISION, processed_time TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
-CREATE EXTENSION IF NOT EXISTS timescaledb;
 SELECT create_hypertable('market_data', 'processed_time', if_not_exists => TRUE);
-"
-
-```
-
-#### B. API Auth & VIP Provisioning
-
-Sistemin milisaniyelik verilerine tam erişim sağlamak için (Test modunda tüm kullanıcıları VIP yapar):
+B. API Users & DaaS Security Table
+SQL
+-- Müşteri ve API anahtar yönetim tablosu
+CREATE TABLE IF NOT EXISTS api_users (
+    id SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL, api_key VARCHAR(64) UNIQUE NOT NULL,
+    tier VARCHAR(20) DEFAULT 'FREE', created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+4. Data Ingestion & ETL Operations
+Historical Data ETL (yFinance): Son 10 yıllık borsa verilerini Delta Lake'e (MinIO) indirir.
 
 Bash
+docker exec -it spark-silver python /app/batch_yfinance_etl.py
+Universal Data Ingestion: IoT ve genel veri tiplerini simüle etmek için kullanılır.
 
-```
-docker exec -it postgres psql -U admin_lakehouse -d market_db -c "
-CREATE TABLE IF NOT EXISTS api_users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    api_key VARCHAR(64) UNIQUE NOT NULL,
-    tier VARCHAR(20) DEFAULT 'FREE',
-    password_hash VARCHAR(256),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-UPDATE api_users SET tier = 'VIP';
-"
+Bash
+docker exec -it spark-silver python test_generic.py
+B2B API Simulation: Harici bir kaynaktan API yoluyla veri girişi simüle eder.
 
-```
+Bash
+python fake_company.py
+5. MLOps: Continuous Training & Hot-Reload
+Full AutoML Engine: Tüm coinler için en iyi modeli (XGBoost/LightGBM) yarıştırır ve MLflow'a kaydeder.
 
-----------
+Bash
+docker exec -it spark-silver python /app/train_model.py ALL
+ML Watcher (CD Pipeline): Veri biriktikçe eğitimi başlatır ve Redis Pub/Sub üzerinden canlı API'ye RELOAD_MODELS sinyali gönderir.
 
-### 4. Data Ingestion & ETL Operations
+Bash
+docker exec -d spark-silver python /app/ml_watcher.py
+Data Quality Gate: Kirli verileri (negatif fiyatlar, null değerler) tarar.
 
-Sisteme veri pompalamak ve geçmiş verileri göle (Data Lake) indirmek için kullanılan komutlar:
+Bash
+docker exec -it spark-silver python quality_gate.py
+6. Service Management & Maintenance
+Hot Reload (Update): Kod değişikliği sonrası servisi kapatmadan güncelleme:
 
--   **Historical Data ETL (yFinance):** Son 10 yıllık günlük ve son 2 aylık saatlik borsa verilerini MinIO'ya indirir.
-    
-    Bash
-    
-    ```
-    docker exec -it spark-silver python /app/batch_yfinance_etl.py
-    
-    ```
-    
--   **Universal Data Ingestion (IoT/Log Sim):** Sadece kripto değil, IoT ve genel veri tiplerini test etmek için.
-    
-    Bash
-    
-    ```
-    docker exec -it spark-silver python universal_producer.py
-    
-    ```
-    
--   **B2B Company Simulation (External API):** Dışarıdaki bir fabrikadan API ile veri geliyor gibi simüle etmek için.
-    
-    Bash
-    
-    ```
-    python fake_company.py
-    
-    ```
-    
+Bash
+docker-compose up -d --build dashboard
+Redis Cache Flush: Tüm API limitlerini ve önbelleği sıfırlamak için:
 
-----------
+Bash
+docker-compose exec redis redis-cli flushall
+Data Lake Cleanup: Delta Lake katmanlarını temizlemek için:
 
-### 5. MLOps: Continuous Training & Hot-Reload
-
-Modelleri eğitmek ve canlı sistemi durdurmadan yeni zekayı devreye almak için:
-
--   **Full AutoML Engine:** Tüm piyasadaki coinler için en iyi modeli (XGBoost/LightGBM) yarıştırır ve Production'a alır.
-    
-    Bash
-    
-    ```
-    docker exec -it spark-silver python /app/train_model.py ALL
-    
-    ```
-    
--   **Autonomous ML Watcher (CD Pipeline):** Göl biriktikçe otonom eğitimi başlatır ve canlı API'ye `/reload` sinyali gönderir.
-    
-    Bash
-    
-    ```
-    docker exec -d spark-silver python /app/ml_watcher.py
-    
-    ```
-    
--   **Data Quality Gate:** Modeller eğitilmeden önce kirli verileri (negatif fiyatlar, bozuk timestamps) tarar.
-    
-    Bash
-    
-    ```
-    docker exec -it spark-silver python quality_gate.py
-    
-    ```
-    
-
-----------
-
-### 6. Service Management & Maintenance (Hot-Reload)
-
-Kod üzerinde değişiklik yaptığınızda sistemi kapatmadan güncelleyebilirsiniz:
-
--   **Dashboard Update:** `docker-compose up -d --build dashboard`
-    
--   **Inference API Update:** `docker-compose up -d --build inference_api`
-    
--   **Data Lake Cleanup:** Veri gölünü tamamen sıfırlamak için:
-    
-    Bash
-    
-    ```
-    docker exec -it minio mc rm -r --force s3/market-data/raw_layer_delta s3/market-data/silver_layer_delta
-    
-    ```
-    
-
-----------
-
-### 7. Frontend & Desktop Terminal Setup (Electron)
-
-Web tabanlı terminalin yanı sıra kurumsal masaüstü deneyimi için:
-
-1.  **Web Access:** [http://localhost:8501](https://www.google.com/search?q=http://localhost:8501)
-    
-2.  **Masaüstü Terminali (Electron):**
-    
-    Bash
-    
-    ```
-    cd frontend
-    npm install        # Bağımlılıkları kur (Sadece bir kez)
-    npm start          # Masaüstü uygulamasını fırlat
-    
-    ```
-    
-    _`main.js` sayesinde CORS kısıtlamaları otomatik aşılır ve API'ye tam yetkiyle bağlanılır._
-
+Bash
+docker exec -it minio mc rm -r --force s3/market-data/raw_layer_delta
 
 ## 📊 Servis ve Altyapı Erişim Matrisi (Eksiksiz Liste)
 
@@ -478,179 +337,104 @@ Sisteme ilk kez girecek olan geliştiriciler için varsayılan giriş bilgileri:
 ----------
 
 
-## ⚡ Enterprise-Grade Data Governance & New Features
 
-RadarPro v6.0 ile gelen bu özellikler, platformu hobi projesinden çıkarıp ticari bir **Data-as-a-Service (DaaS)** altyapısına dönüştürür:
+Bu bölüm, RadarPro’nun teknik olgunluğunu ve bir hobi projesinden profesyonel bir **Data-as-a-Service (DaaS)** platformuna dönüşümünü kanıtlayan en kritik kısımdır. Senior bir bakış açısıyla, buradaki maddeleri kurumsal veri yönetişimi (Data Governance) ve modern ön yüz mimarisi standartlarına göre güncelledim.
 
-### 1. 🧬 Generic Producer & Schema-Agnostic Ingestion
+----------
 
-Sistemin veri giriş katmanı artık tamamen esnektir. Sabit kodlu şemalar terk edilerek **Schema-on-Read** prensibine geçilmiştir.
+## ⚡ Enterprise-Grade Data Governance & Platform Features
 
--   **Data Agnostic:** Sistem; JSON içindeki `data_type` etiketine göre veriyi otonom olarak tanır (Crypto, IoT, Web Log, Server Telemetry).
+RadarPro, v6.0 sürümü ile birlikte veri yönetişimi ve operasyonel verimlilik konularında endüstriyel standartlara ulaşmıştır. Bu özellikler, platformun ticari bir veri sağlayıcısı olarak ölçeklenmesini sağlar:
+
+## 1. 🧬 Generic Producer & Schema-Agnostic Ingestion
+
+Sistemin veri giriş katmanı, katı şema zorunluluklarından arındırılarak **Schema-on-Read** prensibine taşınmıştır.
+
+-   **Data Agnostic:** Sistem, JSON paketleri içerisindeki `data_type` etiketine göre veriyi otonom olarak sınıflandırır (Crypto, IoT, Web Log, Server Telemetry).
     
--   **Universal Carrier:** Kafka ve Bronze katmanı sadece taşıyıcıdır; yeni bir veri kaynağı eklemek için backend kodunda değişiklik yapmaya gerek yoktur.
-    
-
-### 2. 🗄️ Multi-Tenant Data Lake Architecture (Partitioning)
-
-MinIO (S3) üzerindeki Delta Lake dosyaları, yüksek performanslı sorgulama için rastgele tutulmaz. **Multi-tenant** yapısına uygun olarak bölümlenir:
-
--   **Dynamic Partitioning:** Veriler kaynağına, sembolüne ve yılına göre otomatik olarak klasörlenir (`source=binance/symbol=BTCUSDT/year=2026/`).
-    
--   **I/O Optimization:** Bu mimari sayesinde Spark, 10 yıllık veri içinde arama yaparken tüm diski taramak yerine sadece ilgili bölüme (partition) giderek sorgu hızını %80 artırır.
+-   **Universal Carrier:** Kafka ve Bronze katmanı şemadan bağımsız birer taşıyıcı olarak konumlandırılmıştır; bu sayede yeni bir veri kaynağı eklemek için merkezi kod tabanında değişiklik yapılmasına gerek duyulmaz.
     
 
-### 3. 🛡️ Autonomous Lakehouse Maintenance (Optimize & Vacuum)
+## 2. 🗄️ Multi-Tenant Data Lake Architecture (Partitioning)
 
-Büyük veri sistemlerindeki "küçük dosya problemi" (Small File Problem), sistem tarafından otonom olarak çözülür:
+MinIO (S3) üzerindeki Delta Lake katmanı, yüksek performanslı analitik sorgular için **Multi-tenant** yapısına uygun olarak bölümlenmiştir:
 
--   **Optimize:** S3 üzerindeki binlerce küçük Parquet dosyası, yönetim panelinden tetiklenen bir görevle birleştirilerek tek bir büyük, optimize edilmiş dosyaya dönüştürülür.
+-   **Dynamic Partitioning:** Veriler; kaynağına, varlık sembolüne ve zaman damgasına (yıl) göre otomatik olarak dizinlenir (Örn: `source=binance/symbol=BTCUSDT/year=2026/`).
     
--   **Vacuum:** Delta Lake loglarındaki eski ve geçersiz veri sürümleri temizlenerek depolama maliyetleri düşürülür ve "Storage Leak" engellenir.
+-   **I/O Optimization:** Spark motoru, 10 yıllık bir arşiv içerisinde arama yaparken "Partition Pruning" tekniği sayesinde sadece ilgili bölüme odaklanır ve sorgu performansını %80 artırır.
     
 
-### 🔒 4. Enterprise Rate Limiting & Security Gateway
+## 3. 🛡️ Autonomous Lakehouse Maintenance (Self-Healing)
 
-Dış dünyaya açık olan API katmanı, kurumsal seviyede koruma altındadır:
+Büyük veri sistemlerinin kronik sorunu olan "küçük dosya problemi" (Small File Problem), otonom bakım görevleriyle çözülmüştür:
 
--   **Rate Limiter:** Kullanıcıların `tier` seviyesine göre (FREE/VIP) saniyelik istek sınırları uygulanır.
+-   **Optimize:** S3 üzerindeki parçalı binlerce küçük dosya, arka planda birleştirilerek tek bir optimize edilmiş Parquet dosyasına dönüştürülür.
     
--   **Credential Vault:** Tüm API anahtarları PostgreSQL üzerinde hash'lenmiş olarak saklanır ve WebSocket bağlantılarında milisaniyelik doğrulama (auth) yapılır.
+-   **Vacuum:** Delta Lake günlüklerindeki geçersiz veri sürümleri temizlenerek depolama maliyetleri düşürülür ve veri gölünde "Storage Leak" oluşması engellenir.
+    
+
+## 🔒 4. Enterprise Rate Limiting & Security Gateway
+
+Dış dünyaya açık API katmanı, kurumsal sınıf koruma ve yetkilendirme katmanlarıyla güçlendirilmiştir:
+
+-   **Distributed Rate Limiter:** Kullanıcıların abonelik seviyelerine (FREE/VIP) göre saniyelik istek sınırları Redis üzerinde atomik sayaçlarla yönetilir.
+    
+-   **Credential Vault:** Tüm API anahtarları PostgreSQL üzerinde güvenli bir şekilde saklanır ve WebSocket bağlantılarında milisaniyelik yetkilendirme (auth) kontrolleri yapılır.
+    
+
+----------
 
 ## 🎨 Frontend Ecosystem & Client-Side Architecture
 
-RadarPro, sadece bir web arayüzü değil; düşük gecikmeli veri akışını (Low Latency Stream) görselleştirmek için optimize edilmiş, **Hybrid UI** mimarisine sahip bir ekosistemdir. Tasarım dili olarak finans dünyasının standardı olan "Bloomberg/TradingView" koyu tema disiplini benimsenmiştir.
+RadarPro, düşük gecikmeli (low-latency) veri akışlarını görselleştirmek için optimize edilmiş hibrit bir arayüz ekosistemine sahiptir.
 
-### 1. Teknolojik Altyapı (Tech Stack)
+## 1. Teknolojik Altyapı (Tech Stack)
 
--   **Tailwind CSS:** Modern, performanslı ve responsive tasarım iskeleti.
-    
 -   **Lightweight Charts (TradingView):** Milisaniyelik fiyat hareketlerini tarayıcıyı yormadan render eden yüksek performanslı grafik motoru.
     
 -   **Electron.js:** Web teknolojilerini yerel bir masaüstü uygulamasına dönüştüren ve CORS kısıtlamalarını aşarak API ile doğrudan haberleşen "Desktop Wrapper" katmanı.
     
--   **WebSockets & REST:** VIP kullanıcılar için saniyelik veri akışı ve geçmiş analizler için asenkron API iletişimi.
+-   **WebSockets & Redis Pub/Sub:** VIP kullanıcılar için saniyelik veri akışı ve anlık model güncelleme bildirimleri.
+    
+
+## 2. Modüler Sayfa Yapısı ve İşlevsellik
+
+#### 🏛️ Pro Terminal (Institutional Dashboard)
+
+-   **Fonksiyon:** 25 farklı varlığın canlı fiyatlarını, teknik indikatörlerini ve yapay zeka (AI) fiyat tahminlerini tek ekranda sunan ana merkezdir.
+    
+-   **Öne Çıkan Özellik:** Veri hattından gelen "Predicted Price" verisini canlı grafiğe bir "Gölge Fiyat" olarak işleyerek trader'lara görsel rehberlik sağlar.
+    
+
+#### 🔍 Asset Intelligence (L1 Detail)
+
+-   **Order Book (L1):** Alıcı ve satıcı dengesini (Bids/Asks) milisaniyelik hassasiyetle görselleştirir.
+    
+-   **Technical Integration:** Gelişmiş teknik analiz araçlarıyla tam entegre çalışarak derinlemesine varlık incelemesi sunar.
     
 
 ----------
 
-### 2. Modüler Sayfa Yapısı ve İşlevsellik
+## 🖥️ Masaüstü Uygulaması (Electron Desktop App)
 
-#### 🏛️ **Pro Terminal (Institutional Dashboard)**
+RadarPro, profesyonel kullanıcıların tarayıcı sekmeleri arasında kaybolmasını önlemek için bağımsız bir uygulama olarak paketlenmiştir:
 
--   **Dosya:** `index.html`
+-   **Web Security Bypass:**  `webSecurity: false` konfigürasyonu ile yerel ağdaki API ve Kafka kaynaklarına hiçbir tarayıcı engeli (CORS) olmadan en yüksek hızda bağlanır.
     
--   **Fonksiyon:** Bloomberg V18 stiliyle tasarlanmış, 25 farklı varlığın canlı fiyatlarını, teknik indikatörlerini (RSI, MACD, Bollinger Bands) ve yapay zeka (AI) fiyat tahminlerini tek ekranda sunan ana operasyon merkezidir.
+-   **Native Experience:** Tam ekran terminal deneyimi için optimize edilmiş bir kullanıcı arayüzü sunar.
     
--   **Öne Çıkan Özellik:** Veri hattından gelen "Predicted Price" (AI Tahmini) verisini canlı grafiğe bir "Gölge Fiyat" olarak işler.
-    
-
-#### 🔍 **Asset Intelligence (L1 Detail)**
-
--   **Dosya:** `coin_detail.html`
-    
--   **Fonksiyon:** Tek bir varlığa odaklanan derinlemesine analiz sayfasıdır.
-    
--   **Order Book (L1):** Alıcı ve satıcı dengesini (Bids/Asks) milisaniyelik görselleştirir.
-    
--   **Technical Integration:** TradingView'in gelişmiş grafik kütüphanesiyle (TV Widget) tam entegre çalışır.
-    
-
-#### 🔐 **User Portal & Security Center**
-
--   **Dosya:** `portal.html`, `settings.html`, `login.html`
-    
--   **Fonksiyon:** Kullanıcıların API anahtarlarını (`X-API-Key`) yönettiği, paket seviyelerini (FREE/VIP) gördüğü ve güvenlik ayarlarını yapılandırdığı yönetim katmanıdır.
-    
--   **Auth System:** `ingestion_api.py` üzerindeki hash'lenmiş veritabanıyla tam uyumlu giriş ve kayıt döngüsü sağlar.
-    
-
-----------
-
-### 3. 🖥️ Masaüstü Uygulaması (Electron Desktop App)
-
-RadarPro, profesyonel trader'ların tarayıcı sekmeleri arasında kaybolmasını önlemek için bağımsız bir masaüstü uygulaması olarak paketlenmiştir:
-
--   **Web Security Bypass:** `webSecurity: false` konfigürasyonu sayesinde, yerel ağdaki (Localhost) API ve Kafka kaynaklarına hiçbir tarayıcı engeli (CORS) olmadan en yüksek hızda bağlanır.
-    
--   **Native Experience:** `autoHideMenuBar` özelliği ile standart pencere görünümünden kurtulup, tam ekran bir terminal deneyimi sunar.
-    
-
-----------
-
-### 🛠️ Frontend Kurulum ve Çalıştırma
-
-Terminal arayüzünü masaüstü uygulaması olarak başlatmak için aşağıdaki adımları izleyin:
-
-1.  **Bağımlılıkların Yüklenmesi:**
-    
-    Bash
-    
-    ```
-    cd frontend
-    npm install
-    
-    ```
-    
-2.  **Masaüstü Uygulamasının Başlatılması:**
-    
-    Bash
-    
-    ```
-    npm start
-    
-    ```
-    
-    _Bu komut, Electron motorunu tetikleyerek `home.html` üzerinden sistemi ayağa kaldırır._
-    
-3.  **Web Üzerinden Erişim:** Docker ayağa kalktığında, herhangi bir kuruluma gerek kalmadan `http://localhost:8501` adresinden kurumsal yönetim paneline erişilebilir.
-
 
 ----------
 
 ## 🤝 Katkıda Bulunun (Contributing)
 
-Bu proje, bir **Yönetim Bilişim Sistemleri (YBS)** öğrencisi tarafından geliştirilmiş, akademik disiplin ile mühendislik pratiğini birleştiren açık kaynaklı bir framework'tür. Bitirme tezi kapsamında geliştirilen bu yapının büyümesi için her türlü PR (Pull Request) ve fikre kapımız açıktır.
+Bu proje, bir **Yönetim Bilişim Sistemleri (YBS)** öğrencisi tarafından geliştirilmiş, akademik disiplin ile mühendislik pratiğini birleştiren açık kaynaklı bir platformdur. Bitirme tezi kapsamında geliştirilen bu yapının büyümesi için her türlü katkıya açığız.
 
 -   **Geliştirici:** Ömer Çakan
     
 -   **LinkedIn:** [Ömer Çakan - Profiline Git](https://www.google.com/search?q=https://www.linkedin.com/in/%25C3%25B6mer-%2525C3%2525A7akan-819751261)
     
--   **Destek:** Eğer bu proje size veri mühendisliği veya MLOps yolculuğunuzda ilham verdiyse, lütfen depoya bir ⭐ bırakmayı unutmayın!
-    
-
-### 🛠️ Geliştiriciler İçin Kod Talimatı
-
-Sistem üzerinde geliştirme yapmak istiyorsanız lütfen aşağıdaki iş akışını takip edin:
-
-1.  **Projeyi Fork'layın ve Yerelinize İndirin:**
-    
-    Bash
-    
-    ```
-    git clone https://github.com/propaper12/An-Open-Source-Real-Time-Financial-Lakehouse-Project.git
-    
-    ```
-    
-2.  **Yeni Özellik İçin İzole Bir Branch Açın:** _(Lütfen `main` branch'ine doğrudan push yapmayın)_
-    
-    Bash
-    
-    ```
-    git checkout -b dev/isminiz_ve_ozellik_adi
-    
-    ```
-    
-3.  **Geliştirmenizi Yapın ve Değişiklikleri Push'layın:**
-    
-    Bash
-    
-    ```
-    git add .
-    git commit -m "feat: [Modül Adı] Yeni özellik açıklaması"
-    git push origin dev/isminiz_ve_ozellik_adi
-    
-    ```
+-   **Destek:** Eğer bu proje size veri mühendisliği yolculuğunuzda ilham verdiyse, lütfen bir ⭐ bırakmayı unutmayın!
     
 4.  **Pull Request Gönderin:** Değişiklikleriniz incelendikten sonra ana projeye dahil edilecektir.
     
