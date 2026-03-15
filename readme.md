@@ -1,7 +1,12 @@
+<h1 align="center">RadarPro: Real-Time Crypto Intelligence API & MLOps Platform</h1>
+
+<p align="center">
+  <i>An Enterprise-Grade Real-Time Data-as-a-Service (DaaS) and MLOps Ecosystem</i>
+</p>
+
 <div align="center"> 
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" /> 
   <img src="https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white" />
-  
   <img src="https://img.shields.io/badge/Apache_Spark-E25A1C?style=for-the-badge&logo=apache-spark&logoColor=white" /> 
   <img src="https://img.shields.io/badge/Apache_Kafka-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white" /> 
   
@@ -26,6 +31,11 @@
   <img src="https://img.shields.io/badge/dbt-FF694B?style=for-the-badge&logo=dbt&logoColor=white" />
 </div>
 
+<br>
+
+> **Note:** Bu proje, yüksek frekanslı (high-frequency) finansal verileri milisaniyelik gecikmeyle (low-latency) işleyen, depolayan ve DaaS (Data-as-a-Service) modeliyle son kullanıcıya sunan uçtan uca bir veri mühendisliği ve MLOps mimarisidir.
+
+---
 
 # RadarPro: Real-Time Crypto Intelligence API & MLOps Pipeline
 
