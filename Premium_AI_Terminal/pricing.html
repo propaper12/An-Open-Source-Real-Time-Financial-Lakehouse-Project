@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarPro | Enterprise Pricing & Plans</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #050608; color: #d1d4dc; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px); background-size: 50px 50px; }
+        .hero-glow { position: absolute; top: -10%; left: 50%; transform: translateX(-50%); width: 80vw; height: 50vh; background: radial-gradient(ellipse at center, rgba(41, 98, 255, 0.15) 0%, transparent 70%); z-index: -1; pointer-events: none; }
+        .btn-glow { background: linear-gradient(135deg, #2962FF, #1c4bd6); color: white; font-weight: 900; border-radius: 12px; transition: 0.3s; box-shadow: 0 0 25px rgba(41, 98, 255, 0.3); }
+        .btn-glow:hover { transform: translateY(-2px); box-shadow: 0 15px 35px rgba(41, 98, 255, 0.5); }
+        .glass-card { background: rgba(13, 16, 21, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 24px; }
+        .vip-card { border-color: rgba(252, 213, 53, 0.5); box-shadow: 0 20px 50px rgba(252, 213, 53, 0.15); }
+        .compare-table th, .compare-table td { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 20px; text-align: left; }
+        .compare-table th { background: rgba(255,255,255,0.02); font-weight: 800; color: white; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .check { color: #00ff95; font-weight: 900; }
+        .cross { color: #ff3b5c; font-weight: 900; opacity: 0.5; }
+
+        /* ENDPOINT BADGES */
+        .ep-badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 700; }
+        .ep-get { background: rgba(0,210,149,0.12); color: #00d295; border: 1px solid rgba(0,210,149,0.25); }
+        .ep-ws  { background: rgba(252,213,53,0.12); color: #FCD535; border: 1px solid rgba(252,213,53,0.25); }
+        .ep-no  { background: rgba(255,59,92,0.08); color: #ff3b5c; border: 1px solid rgba(255,59,92,0.15); opacity: 0.6; }
+
+        /* FIELD CHIP */
+        .field-chip { display: inline-flex; align-items: center; gap: 5px; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 3px 10px; border-radius: 6px; margin: 3px 2px; }
+        .chip-active { background: rgba(41,98,255,0.12); color: #6ea3ff; border: 1px solid rgba(41,98,255,0.2); }
+        .chip-vip    { background: rgba(252,213,53,0.10); color: #FCD535; border: 1px solid rgba(252,213,53,0.2); }
+        .chip-locked { background: rgba(255,255,255,0.03); color: #444; border: 1px solid rgba(255,255,255,0.05); text-decoration: line-through; }
+
+        /* SECTION DIVIDER */
+        .section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #444; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 8px; margin-bottom: 16px; }
+
+        /* ENDPOINT ROW */
+        .ep-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .ep-row:last-child { border-bottom: none; }
+
+        /* TABLE ROW HOVER */
+        .compare-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+        .compare-table tbody tr.section-row td { background: rgba(41,98,255,0.04); padding: 10px 20px; }
+
+        /* FAQ ACCORDION */
+        details summary { cursor: pointer; list-style: none; }
+        details summary::-webkit-details-marker { display: none; }
+        details[open] summary .arrow { transform: rotate(180deg); }
+        .arrow { transition: transform 0.2s; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div class="hero-glow"></div>
+
+    <!-- NAV (birebir aynı) -->
+    <nav class="flex items-center justify-between px-10 py-5 border-b border-white/5 bg-[#050608]/80 sticky top-0 z-50 backdrop-blur-xl">
+        <a href="home.html" class="text-2xl font-black text-white">RADAR<span class="text-[#2962FF]">PRO</span></a>
+        <div class="hidden lg:flex gap-8">
+            <a href="index.html" class="text-sm font-bold text-gray-400 hover:text-white transition">Terminal</a>
+            <a href="api_docs.html" class="text-sm font-bold text-gray-400 hover:text-white transition">API Dokümanı</a>
+            <a href="pricing.html" class="text-sm font-bold text-white border-b-2 border-[#2962FF] pb-1">Planlar</a>
+        </div>
+        <a href="register.html" class="btn-glow px-6 py-2.5 text-sm">API Anahtarı Al</a>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 pt-20 pb-32 relative z-10">
+
+        <!-- HERO -->
+        <div class="text-center mb-20">
+            <div class="inline-block font-mono text-xs text-[#2962FF] border border-[#2962FF]/30 bg-[#2962FF]/5 px-4 py-1.5 rounded-full mb-6 tracking-widest uppercase">Binance WS → Kafka → Spark → TimescaleDB</div>
+            <h1 class="text-5xl lg:text-6xl font-black text-white mb-6">Milisaniyelik Veri Gücü. <br><span class="text-[#2962FF]">Şeffaf Altyapı Maliyetleri.</span></h1>
+            <p class="text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed">İster algoritmalarınızı test eden bir geliştirici olun, ister HFT (Yüksek Frekanslı İşlem) yapan bir fon yöneticisi. Dinamik Veri Maskeleme (DDM) altyapımızla sadece ihtiyacınız olan veri katmanına ödeme yapın.</p>
+        </div>
+
+        <!-- ═══════════════════════ PLAN KARTLARI ═══════════════════════ -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-24">
+
+            <!-- FREE -->
+            <div class="glass-card p-10 flex flex-col">
+                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Geliştiriciler İçin</div>
+                <h3 class="text-2xl font-black text-white mb-3">Developer Free</h3>
+                <p class="text-gray-400 text-sm mb-6 h-12">Sistemi test etmek isteyenler için 15 dakika gecikmeli temel REST API erişimi.</p>
+                <div class="text-5xl font-black text-white mb-2 font-mono">$0 <span class="text-sm text-gray-500 font-sans">/ ay</span></div>
+                <div class="font-mono text-xs text-gray-600 mb-8">Kredi kartı gerekmez</div>
+                <a href="register.html" class="py-4 w-full text-center border border-white/10 rounded-xl font-bold hover:bg-white hover:text-black transition mb-8">Ücretsiz Başla</a>
+
+                <div class="section-label">Limitler</div>
+                <ul class="space-y-3 text-sm text-gray-400 font-medium mb-6">
+                    <li class="flex items-center gap-3"><span class="check">✔</span> Günde <span class="text-white font-bold mx-1">1.000</span> REST isteği <span class="text-[#ff3b5c] text-xs ml-1">(aşılırsa ban)</span></li>
+                    <li class="flex items-center gap-3"><span class="text-[#ff3b5c] font-black">15dk</span> <span>Veri gecikmesi (yfinance proxy)</span></li>
+                    <li class="flex items-center gap-3"><span class="cross">✖</span> WebSocket yok</li>
+                    <li class="flex items-center gap-3"><span class="cross">✖</span> CSV export yok</li>
+                </ul>
+
+                <div class="section-label">Uç Noktalar</div>
+                <div>
+                    <div class="ep-row">
+                        <span class="ep-badge ep-get">GET</span>
+                        <div>
+                            <div class="font-mono text-xs text-white">/api/v1/history/{symbol}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">OHLCV verisi — 15dk gecikmeli, yfinance üzerinden</div>
+                        </div>
+                    </div>
+                    <div class="ep-row opacity-40">
+                        <span class="ep-badge ep-no">—</span>
+                        <div>
+                            <div class="font-mono text-xs text-gray-500">/api/v1/market/{symbol}</div>
+                            <div class="text-xs text-gray-600 mt-0.5">Canlı veri — bu plan için kapalı</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-label mt-6">Erişilebilir Alanlar</div>
+                <div>
+                    <span class="field-chip chip-active">symbol</span>
+                    <span class="field-chip chip-active">open</span>
+                    <span class="field-chip chip-active">high</span>
+                    <span class="field-chip chip-active">low</span>
+                    <span class="field-chip chip-active">close</span>
+                    <span class="field-chip chip-active">volume</span>
+                    <span class="field-chip chip-locked">volatility</span>
+                    <span class="field-chip chip-locked">cvd</span>
+                    <span class="field-chip chip-locked">predicted_price</span>
+                    <span class="field-chip chip-locked">trade_side</span>
+                    <span class="field-chip chip-locked">is_buyer_maker</span>
+                </div>
+            </div>
+
+            <!-- PREMIUM / QUANT PRO -->
+            <div class="glass-card p-10 flex flex-col border-[#2962FF]/30 shadow-[0_0_30px_rgba(41,98,255,0.1)]">
+                <div class="text-[10px] text-[#2962FF] font-bold uppercase tracking-widest mb-2">Algoritmik Ticaret</div>
+                <h3 class="text-2xl font-black text-white mb-3">Quant PRO</h3>
+                <p class="text-gray-300 text-sm mb-6 h-12">Kendi dashboard'unu kuran aktif traderlar için gerçek zamanlı API verisi.</p>
+                <div class="text-5xl font-black text-white mb-2 font-mono">$49 <span class="text-sm text-gray-500 font-sans">/ ay</span></div>
+                <div class="font-mono text-xs text-gray-600 mb-8">Aylık iptal edilebilir</div>
+                <a href="register.html" class="py-4 w-full text-center bg-[#2962FF]/10 border border-[#2962FF] text-[#2962FF] rounded-xl font-bold hover:bg-[#2962FF] hover:text-white transition mb-8">PRO'ya Yükselt</a>
+
+                <div class="section-label">Limitler</div>
+                <ul class="space-y-3 text-sm text-white font-medium mb-6">
+                    <li class="flex items-center gap-3"><span class="check">✔</span> Saniyede <span class="text-[#2962FF] font-black mx-1">10</span> REST isteği</li>
+                    <li class="flex items-center gap-3"><span class="text-[#00ff95] font-black">0ms</span> <span>Veri gecikmesi — canlı</span></li>
+                    <li class="flex items-center gap-3"><span class="check">✔</span> WebSocket akışı (kısıtlı)</li>
+                    <li class="flex items-center gap-3"><span class="check">✔</span> CSV export — son <span class="text-white font-bold mx-1">12 saat</span></li>
+                </ul>
+
+                <div class="section-label">Uç Noktalar</div>
+                <div>
+                    <div class="ep-row">
+                        <span class="ep-badge ep-get">GET</span>
+                        <div>
+                            <div class="font-mono text-xs text-white">/api/v1/market/{symbol}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">Canlı anlık veri — AI alanları maskelenir</div>
+                        </div>
+                    </div>
+                    <div class="ep-row">
+                        <span class="ep-badge ep-ws">WSS</span>
+                        <div>
+                            <div class="font-mono text-xs text-white">/api/v1/stream/{symbol}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">Kafka push akışı — CVD/AI gizli</div>
+                        </div>
+                    </div>
+                    <div class="ep-row">
+                        <span class="ep-badge ep-get">GET</span>
+                        <div>
+                            <div class="font-mono text-xs text-white">/api/v1/download/market</div>
+                            <div class="text-xs text-gray-500 mt-0.5">CSV export — son 12 saat, AI kolonları HIDDEN</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-label mt-6">Erişilebilir Alanlar</div>
+                <div>
+                    <span class="field-chip chip-active">symbol</span>
+                    <span class="field-chip chip-active">average_price</span>
+                    <span class="field-chip chip-active">volume_usd</span>
+                    <span class="field-chip chip-active">volatility</span>
+                    <span class="field-chip chip-active">processed_time</span>
+                    <span class="field-chip chip-locked">cvd</span>
+                    <span class="field-chip chip-locked">predicted_price</span>
+                    <span class="field-chip chip-locked">trade_side</span>
+                    <span class="field-chip chip-locked">is_buyer_maker</span>
+                </div>
+            </div>
+
+            <!-- VIP -->
+            <div class="glass-card vip-card p-10 flex flex-col relative transform scale-105 z-10">
+                <div class="absolute top-0 inset-x-0 bg-gradient-to-r from-[#FCD535] to-[#f3ba2f] text-black text-[10px] font-black tracking-widest text-center py-2 rounded-t-[23px] uppercase">Enterprise & Funds</div>
+                <h3 class="text-2xl font-black text-white mb-3 mt-6">VIP PREMIUM</h3>
+                <p class="text-gray-300 text-sm mb-6 h-12">HFT (Yüksek Frekanslı) WebSocket akışı, XGBoost Zekası ve Order Flow.</p>
+                <div class="text-5xl font-black text-[#FCD535] mb-2 font-mono">$199 <span class="text-sm text-white font-sans">/ ay</span></div>
+                <div class="font-mono text-xs text-gray-500 mb-8">SLA + öncelikli destek dahil</div>
+                <a href="register.html" class="text-center py-4 w-full text-black font-black uppercase tracking-widest mb-8 rounded-xl" style="background: linear-gradient(90deg, #FCD535, #f3ba2f);">VIP Anahtarı Al</a>
+
+                <div class="section-label">Limitler</div>
+                <ul class="space-y-3 text-sm text-white font-bold mb-6">
+                    <li class="flex items-center gap-3"><span class="text-[#FCD535]">⚡</span> Saniyede <span class="text-[#FCD535] mx-1">50</span> REST isteği</li>
+                    <li class="flex items-center gap-3"><span class="text-[#00ff95] font-black">&lt;5ms</span> <span>WSS push gecikmesi</span></li>
+                    <li class="flex items-center gap-3"><span class="text-[#FCD535]">🔌</span> Limitsiz WebSocket akışı</li>
+                    <li class="flex items-center gap-3"><span class="text-[#FCD535]">📦</span> CSV export — son <span class="text-[#FCD535] mx-1">24 saat</span></li>
+                </ul>
+
+                <div class="section-label">Uç Noktalar</div>
+                <div>
+                    <div class="ep-row">
+                        <span class="ep-badge ep-get">GET</span>
+                        <div>
+                            <div class="font-mono text-xs text-white">/api/v1/market/{symbol}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">Tüm alanlar açık — maskeleme yok</div>
+                        </div>
+                    </div>
+                    <div class="ep-row">
+                        <span class="ep-badge ep-ws">WSS</span>
+                        <div>
+                            <div class="font-mono text-xs text-white">/api/v1/stream/{symbol}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">Tam payload — CVD + AI + Order Flow</div>
+                        </div>
+                    </div>
+                    <div class="ep-row">
+                        <span class="ep-badge ep-get">GET</span>
+                        <div>
+                            <div class="font-mono text-xs text-white">/api/v1/download/market</div>
+                            <div class="text-xs text-gray-500 mt-0.5">CSV export — son 24 saat, tüm kolonlar</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-label mt-6">Erişilebilir Alanlar</div>
+                <div>
+                    <span class="field-chip chip-active">symbol</span>
+                    <span class="field-chip chip-active">average_price</span>
+                    <span class="field-chip chip-active">volume_usd</span>
+                    <span class="field-chip chip-active">volatility</span>
+                    <span class="field-chip chip-active">processed_time</span>
+                    <span class="field-chip chip-vip">cvd ✦</span>
+                    <span class="field-chip chip-vip">predicted_price ✦</span>
+                    <span class="field-chip chip-vip">trade_side ✦</span>
+                    <span class="field-chip chip-vip">is_buyer_maker ✦</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════ KARŞILAŞTIRMA TABLOSU ═══════════════════════ -->
+        <div class="max-w-6xl mx-auto glass-card overflow-hidden mb-24">
+            <div class="p-8 border-b border-white/5 flex items-center justify-between flex-wrap gap-4">
+                <h2 class="text-2xl font-black text-white">Teknik Özellik Karşılaştırması</h2>
+                <div class="flex gap-3 text-xs font-mono">
+                    <span class="field-chip chip-active">PREMIUM = Quant PRO</span>
+                    <span class="field-chip chip-vip">VIP = VIP Premium ✦</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="compare-table w-full">
+                    <thead>
+                        <tr>
+                            <th class="w-1/4">Altyapı & Veri Katmanı</th>
+                            <th class="w-1/4">Free (Developer)</th>
+                            <th class="w-1/4 text-[#2962FF]">Quant PRO</th>
+                            <th class="w-1/4 text-[#FCD535]">VIP Premium</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm text-gray-300">
+
+                        <!-- BAĞLANTI -->
+                        <tr class="section-row">
+                            <td colspan="4" class="font-black text-[10px] uppercase tracking-widest text-gray-500">// Bağlantı & Hız</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">REST API Erişimi</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">WebSocket (WSS) Akışı</td>
+                            <td><span class="cross">✖</span> Yok</td>
+                            <td><span class="check">✔</span> Kısıtlı payload</td>
+                            <td><span class="check">✔</span> <span class="text-[#FCD535]">Tam payload, sınırsız</span></td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">Rate Limit (REST)</td>
+                            <td>Günlük 1.000 <span class="block text-xs text-[#ff3b5c] mt-0.5">Aşılırsa hesap banlanır</span></td>
+                            <td class="text-[#2962FF] font-bold">10 istek / saniye</td>
+                            <td class="text-[#FCD535] font-bold">50 istek / saniye</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">Veri Gecikmesi</td>
+                            <td class="text-[#ff3b5c] font-bold">15 Dakika <span class="block text-xs text-gray-500 font-normal mt-0.5">yfinance proxy üzerinden</span></td>
+                            <td class="text-[#00ff95] font-bold">Canlı (Real-Time)</td>
+                            <td class="text-[#00ff95] font-bold">&lt; 5ms <span class="block text-xs text-gray-500 font-normal mt-0.5">Kafka→WSS direkt push</span></td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">CSV Export (İndirme)</td>
+                            <td><span class="cross">✖</span> Yok</td>
+                            <td><span class="check">✔</span> Son <span class="text-white font-bold mx-1">12 saat</span> <span class="text-xs text-gray-500">(AI kolonları gizli)</span></td>
+                            <td><span class="check">✔</span> Son <span class="text-[#FCD535] font-bold mx-1">24 saat</span> <span class="text-xs text-gray-500">(tüm kolonlar)</span></td>
+                        </tr>
+
+                        <!-- VERİ ŞEMASI -->
+                        <tr class="section-row">
+                            <td colspan="4" class="font-black text-[10px] uppercase tracking-widest text-gray-500">// Veri Şeması (Data Dictionary) — Hangi Alanlar Açık?</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">
+                                <span class="font-mono text-xs text-gray-400">symbol</span>
+                                <span class="block text-xs text-gray-500 font-normal mt-0.5">İşlem çifti (BTCUSDT...)</span>
+                            </td>
+                            <td><span class="check">✔</span> Aktif</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">
+                                <span class="font-mono text-xs text-gray-400">average_price / close</span>
+                                <span class="block text-xs text-gray-500 font-normal mt-0.5">Pencere ortalama fiyatı</span>
+                            </td>
+                            <td><span class="check">✔</span> Aktif</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">
+                                <span class="font-mono text-xs text-gray-400">volume_usd</span>
+                                <span class="block text-xs text-gray-500 font-normal mt-0.5">Dolar bazlı işlem hacmi</span>
+                            </td>
+                            <td><span class="check">✔</span> Aktif</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">
+                                <span class="font-mono text-xs text-gray-400">volatility</span>
+                                <span class="block text-xs text-gray-500 font-normal mt-0.5">30sn fiyat standart sapması</span>
+                            </td>
+                            <td><span class="cross">✖</span> Maskelenmiş</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                            <td><span class="check">✔</span> Aktif</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">
+                                <span class="font-mono text-xs text-gray-400">trade_side</span>
+                                <span class="block text-xs text-gray-500 font-normal mt-0.5">BUY / SELL işlem yönü</span>
+                            </td>
+                            <td><span class="cross">✖</span> Maskelenmiş</td>
+                            <td><span class="cross">✖</span> Maskelenmiş</td>
+                            <td class="font-bold text-[#FCD535]"><span class="check">✔</span> Aktif</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">
+                                <span class="font-mono text-xs text-gray-400">is_buyer_maker</span>
+                                <span class="block text-xs text-gray-500 font-normal mt-0.5">Agresif alıcı/satıcı tespiti</span>
+                            </td>
+                            <td><span class="cross">✖</span> Maskelenmiş</td>
+                            <td><span class="cross">✖</span> Maskelenmiş</td>
+                            <td class="font-bold text-[#FCD535]"><span class="check">✔</span> Aktif</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">
+                                <span class="font-mono text-xs text-gray-400">cvd</span>
+                                <span class="block text-xs text-gray-500 font-normal mt-0.5">Kümülatif Hacim Deltası (Spark)</span>
+                            </td>
+                            <td><span class="cross">✖</span> Maskelenmiş</td>
+                            <td><span class="cross">✖</span> Maskelenmiş</td>
+                            <td class="font-bold text-[#FCD535]"><span class="check">✔</span> Aktif — Whale Tracker</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">
+                                <span class="font-mono text-xs text-gray-400">predicted_price</span>
+                                <span class="block text-xs text-gray-500 font-normal mt-0.5">XGBoost / LightGBM AI tahmini</span>
+                            </td>
+                            <td><span class="cross">✖</span> Maskelenmiş</td>
+                            <td><span class="cross">✖</span> Maskelenmiş</td>
+                            <td class="font-bold text-[#FCD535]"><span class="check">✔</span> Aktif — MLOps Pipeline</td>
+                        </tr>
+
+                        <!-- GÜVENLİK -->
+                        <tr class="section-row">
+                            <td colspan="4" class="font-black text-[10px] uppercase tracking-widest text-gray-500">// Güvenlik & Korumalar</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">IP Brute Force Koruması</td>
+                            <td><span class="check">✔</span> 5 hatalı → 15dk ban</td>
+                            <td><span class="check">✔</span> 5 hatalı → 15dk ban</td>
+                            <td><span class="check">✔</span> 5 hatalı → 15dk ban</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">API Key Kimlik Doğrulama</td>
+                            <td><span class="check">✔</span> sk_live_ prefix</td>
+                            <td><span class="check">✔</span> sk_live_ prefix</td>
+                            <td><span class="check">✔</span> sk_live_ prefix</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">Kayıt IP Spam Koruması</td>
+                            <td><span class="check">✔</span> 3 hesap/IP/saat</td>
+                            <td><span class="check">✔</span> 3 hesap/IP/saat</td>
+                            <td><span class="check">✔</span> 3 hesap/IP/saat</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">Bcrypt Şifre Hash</td>
+                            <td><span class="check">✔</span> Rounds=12</td>
+                            <td><span class="check">✔</span> Rounds=12</td>
+                            <td><span class="check">✔</span> Rounds=12</td>
+                        </tr>
+
+                        <!-- ALTYAPI -->
+                        <tr class="section-row">
+                            <td colspan="4" class="font-black text-[10px] uppercase tracking-widest text-gray-500">// Altyapı</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">Veri Kaynağı</td>
+                            <td>yfinance (harici)</td>
+                            <td>Binance WS → Kafka → Spark</td>
+                            <td>Binance WS → Kafka → Spark</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">Coin Sayısı</td>
+                            <td>25 coin (gecikmeli)</td>
+                            <td>25 coin (canlı)</td>
+                            <td>25 coin (canlı)</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-white">ML Altyapısı</td>
+                            <td>—</td>
+                            <td>MLflow tracking (gizli)</td>
+                            <td class="text-[#FCD535] font-bold">XGBoost + LightGBM + GBM</td>
+                        </tr>
+
+                        <!-- FİYAT -->
+                        <tr>
+                            <td class="font-black text-white text-base">Fiyat</td>
+                            <td class="font-black text-white text-lg">$0 <span class="text-xs text-gray-500 font-normal">/ ay</span></td>
+                            <td class="font-black text-[#2962FF] text-lg">$49 <span class="text-xs text-gray-500 font-normal">/ ay</span></td>
+                            <td class="font-black text-[#FCD535] text-lg">$199 <span class="text-xs text-gray-500 font-normal">/ ay</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════ SSS ═══════════════════════ -->
+        <div class="max-w-3xl mx-auto mb-24">
+            <h2 class="text-3xl font-black text-white text-center mb-12">Sıkça Sorulan Sorular</h2>
+            <div class="space-y-3">
+
+                <details class="glass-card p-6 group">
+                    <summary class="flex items-center justify-between font-bold text-white cursor-pointer">
+                        FREE hesabım banlandıktan sonra ne olur?
+                        <span class="arrow text-gray-500 text-lg">▾</span>
+                    </summary>
+                    <p class="text-gray-400 text-sm mt-4 leading-relaxed">Günlük 1.000 istek limitini aşan FREE hesaplar kalıcı olarak banlanır. Ban, e-posta bazlı Redis'te tutulduğu için yeni API key almanız da işe yaramaz. PRO'ya yükselterek banı kaldırabilirsiniz.</p>
+                </details>
+
+                <details class="glass-card p-6 group">
+                    <summary class="flex items-center justify-between font-bold text-white cursor-pointer">
+                        Quant PRO'da neden CVD ve AI tahmini yok?
+                        <span class="arrow text-gray-500 text-lg">▾</span>
+                    </summary>
+                    <p class="text-gray-400 text-sm mt-4 leading-relaxed">CVD (Kümülatif Hacim Deltası) ve AI tahminleri platformumuzun en değerli katmanları. Bu veriler Apache Spark CVD Engine ve XGBoost/LightGBM MLOps pipeline'ı tarafından üretilmekte, Dinamik Veri Maskeleme (DDM) ile yalnızca VIP kullanıcılara sunulmaktadır.</p>
+                </details>
+
+                <details class="glass-card p-6 group">
+                    <summary class="flex items-center justify-between font-bold text-white cursor-pointer">
+                        WebSocket bağlantısı nasıl kurulur?
+                        <span class="arrow text-gray-500 text-lg">▾</span>
+                    </summary>
+                    <p class="text-gray-400 text-sm mt-4 leading-relaxed">PREMIUM ve VIP kullanıcılar için:</p>
+                    <div class="mt-3 bg-black/40 rounded-xl p-4 font-mono text-xs text-[#00ff95]">
+                        wss://api.radarpro.io/api/v1/stream/BTCUSDT?api_key=sk_live_...
+                    </div>
+                    <p class="text-gray-400 text-sm mt-3">PREMIUM bağlantılarında CVD, predicted_price, trade_side ve is_buyer_maker alanları sunucu tarafında otomatik olarak silinir.</p>
+                </details>
+
+                <details class="glass-card p-6 group">
+                    <summary class="flex items-center justify-between font-bold text-white cursor-pointer">
+                        Hangi kripto çiftleri destekleniyor?
+                        <span class="arrow text-gray-500 text-lg">▾</span>
+                    </summary>
+                    <p class="text-gray-400 text-sm mt-4 leading-relaxed">Binance WebSocket üzerinden 25 USDT çifti anlık olarak izlenmektedir: BTC, ETH, BNB, SOL, XRP, DOGE, ADA, AVAX, MATIC, DOT ve diğerleri. Tam liste API dokümantasyonunda mevcuttur.</p>
+                </details>
+
+                <details class="glass-card p-6 group">
+                    <summary class="flex items-center justify-between font-bold text-white cursor-pointer">
+                        Plan değişikliği nasıl yapılır?
+                        <span class="arrow text-gray-500 text-lg">▾</span>
+                    </summary>
+                    <p class="text-gray-400 text-sm mt-4 leading-relaxed">Mevcut sistemde plan değişikliği destek ekibimiz üzerinden yapılmaktadır. Ödeme onayının ardından hesabınız anında yükseltilir ve yeni API key'iniz size iletilir.</p>
+                </details>
+
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="max-w-3xl mx-auto text-center glass-card p-16 relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-[#2962FF]/10 to-transparent pointer-events-none"></div>
+            <div class="relative z-10">
+                <div class="font-mono text-xs text-[#2962FF] tracking-widest uppercase mb-4">// Başlamaya hazır mısınız?</div>
+                <h2 class="text-4xl font-black text-white mb-4">Veriniz sizi beklemiyor.</h2>
+                <p class="text-gray-400 mb-10">60 saniyede API key alın. Kredi kartı gerekmez.</p>
+                <div class="flex gap-4 justify-center flex-wrap">
+                    <a href="register.html" class="btn-glow px-10 py-4 text-sm font-black uppercase tracking-widest">Ücretsiz Başla</a>
+                    <a href="api_docs.html" class="px-10 py-4 text-sm font-bold border border-white/10 rounded-xl hover:bg-white hover:text-black transition uppercase tracking-widest">Dokümantasyon</a>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</body>
+</html>

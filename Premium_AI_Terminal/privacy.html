@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gizlilik Politikası | RadarPro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #050608; color: #d1d4dc; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; transition: background-color 0.3s, color 0.3s; }
+        
+        .hero-bg { background-image: radial-gradient(circle at 10% 20%, rgba(41, 98, 255, 0.08), transparent 50%); }
+
+        .tv-nav { background-color: rgba(5, 6, 8, 0.8); border-bottom: 1px solid #1f232b; backdrop-filter: blur(20px); transition: background-color 0.3s, border-color 0.3s; }
+        .nav-link { color: #848e9c; font-weight: 600; font-size: 14px; transition: all 0.3s ease; position: relative; }
+        .nav-link:hover { color: #2962FF; }
+
+        .btn-outline-glow { border: 1px solid #1f232b; background: rgba(22, 26, 30, 0.5); backdrop-filter: blur(10px); color: white; font-weight: 800; border-radius: 12px; transition: all 0.3s ease; padding: 8px 20px;}
+        .btn-outline-glow:hover { border-color: #2962FF; color: #2962FF; transform: translateY(-2px); box-shadow: 0 10px 25px rgba(41, 98, 255, 0.15); }
+        
+        .glass-card { background: rgba(18, 22, 26, 0.6); border: 1px solid rgba(42, 46, 57, 0.5); backdrop-filter: blur(12px); border-radius: 16px; transition: all 0.4s ease; border-left: 4px solid transparent; }
+        .glass-card:hover { transform: translateX(5px); border-color: rgba(41, 98, 255, 0.3); border-left-color: #2962FF; background: rgba(25, 30, 36, 0.8); }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .delay-100 { animation-delay: 100ms; } .delay-200 { animation-delay: 200ms; } .delay-300 { animation-delay: 300ms; } .delay-400 { animation-delay: 400ms; }
+
+        /* Light Mode */
+        body.light-mode { background-color: #f8fafc !important; color: #0f172a !important; }
+        body.light-mode .text-white { color: #0f172a !important; }
+        body.light-mode .text-gray-400 { color: #475569 !important; }
+        body.light-mode .glass-card { background: rgba(255, 255, 255, 0.9) !important; border-color: rgba(0, 0, 0, 0.1) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important; }
+        body.light-mode .glass-card:hover { border-color: rgba(41, 98, 255, 0.4) !important; border-left-color: #2962FF !important; }
+        body.light-mode .tv-nav { background-color: rgba(255, 255, 255, 0.9) !important; border-bottom-color: #e2e8f0 !important; }
+        body.light-mode footer { background-color: #f1f5f9 !important; border-top-color: #e2e8f0 !important; }
+        body.light-mode code.bg-\[\#050608\] { background-color: #e2e8f0 !important; border-color: #cbd5e1 !important; color: #2962FF !important; }
+    </style>
+</head>
+<body class="hero-bg flex flex-col min-h-screen">
+
+    <nav class="tv-nav flex items-center justify-between px-10 py-5 sticky top-0 z-50">
+        <a href="home.html" class="text-2xl font-black text-white tracking-tighter hover:scale-105 transition-transform">RADAR<span class="text-[#2962FF]">PRO</span></a>
+        <div class="hidden lg:flex gap-8">
+            <a href="home.html" class="nav-link">Ana Sayfa</a>
+            <a href="models.html" class="nav-link">AI Modelleri</a>
+            <a href="index.html" class="nav-link">Terminal</a>
+            <a href="api_docs.html" class="nav-link">Dokümantasyon</a>
+            <a href="pricing.html" class="nav-link">Fiyatlandırma</a>
+        </div>
+        <div class="flex gap-4 md:gap-6 items-center">
+            <button onclick="toggleTheme()" class="text-xl text-gray-400 hover:text-[#2962FF] transition hover:scale-110" title="Açık/Koyu Tema">🌓</button>
+            <div id="auth-buttons" class="flex gap-4 items-center ml-2">
+                <a href="login.html" class="text-sm font-bold text-gray-400 hover:text-white transition hidden md:block">Oturum Aç</a>
+                <a href="register.html" class="btn-outline-glow text-sm tracking-wide">Kayıt Ol</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-4xl mx-auto px-6 pt-20 pb-32 w-full">
+        <div class="mb-16 animate-fade-in">
+            <div class="inline-block bg-[#2962FF]/10 text-[#2962FF] font-bold px-3 py-1 rounded-full text-xs mb-4 uppercase tracking-widest border border-[#2962FF]/20">
+                Şeffaflık İlkesi
+            </div>
+            <h1 class="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">Gizlilik Politikası</h1>
+            <p class="text-sm text-gray-500 font-bold tracking-widest uppercase">Son Güncelleme: 6 Mart 2026</p>
+        </div>
+
+        <section class="space-y-6">
+            <div class="glass-card p-8 animate-fade-in delay-100">
+                <h2 class="text-2xl font-bold text-white mb-4">1. Veri Toplama ve Kullanımı</h2>
+                <p class="text-gray-400 leading-relaxed">Radar Global olarak, sunduğumuz API ve Terminal hizmetlerini sağlarken minimum düzeyde kişisel veri toplama prensibini benimsiyoruz. Sisteme kayıt olduğunuzda sadece kullanıcı adı, e-posta adresi ve güvenli kriptografik algoritmalarla (SHA-256) şifrelenmiş parolanız saklanır. API İstekleriniz sistem performansını ölçmek amacıyla geçici log dosyalarında tutulur.</p>
+            </div>
+
+            <div class="glass-card p-8 animate-fade-in delay-200">
+                <h2 class="text-2xl font-bold text-white mb-4">2. API Anahtarı Güvenliği</h2>
+                <p class="text-gray-400 leading-relaxed">Oluşturduğunuz <code class="bg-[#050608] text-[#2962FF] px-2 py-1 rounded border border-[#1f232b] font-mono text-sm">sk_live_</code> önekli API anahtarlarınızın güvenliği tamamen sizin sorumluluğunuzdadır. RadarPro altyapısı bu anahtarları üçüncü şahıslarla paylaşmaz. Bir sızıntı tespit edildiğinde hesap portalı üzerinden eski anahtarınızı iptal edip yenisini oluşturabilirsiniz.</p>
+            </div>
+
+            <div class="glass-card p-8 animate-fade-in delay-300">
+                <h2 class="text-2xl font-bold text-white mb-4">3. Çerezler (Cookies) ve LocalStorage</h2>
+                <p class="text-gray-400 leading-relaxed">Sistemimiz, oturumunuzu açık tutmak ve API anahtarınızı terminal üzerinde otomatik tanımak için tarayıcınızın LocalStorage (Yerel Depolama) özelliğini kullanır. Üçüncü taraf reklam takip çerezleri kullanılmamaktadır.</p>
+            </div>
+
+            <div class="glass-card p-8 animate-fade-in delay-400">
+                <h2 class="text-2xl font-bold text-white mb-4">4. Veri Paylaşımı</h2>
+                <p class="text-gray-400 leading-relaxed">Verileriniz, yasal bir zorunluluk (mahkeme kararı vb.) olmadığı sürece hiçbir kurum, kuruluş veya reklam ajansına satılmaz, kiralanamaz veya devredilemez.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-[#030405] border-t border-[#1f232b] py-8 text-center text-sm font-bold text-gray-600 transition-colors">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center px-6">
+            <p>Radar Global © 2026. Tüm Hakları Saklıdır.</p>
+            <div class="flex gap-6 mt-4 md:mt-0">
+                <a href="terms.html" class="hover:text-[#2962FF] transition">Kullanım Koşulları</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if(localStorage.getItem('radar_theme') === 'light') document.body.classList.add('light-mode');
+
+            const key = localStorage.getItem('radar_api_key');
+            if (key) {
+                document.getElementById('auth-buttons').innerHTML = `
+                    <a href="portal.html" class="btn-outline-glow px-5 py-2 text-sm font-bold tracking-wide">Panele Dön</a>
+                `;
+            }
+        });
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('radar_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "premium-ai-terminal",
+  "version": "1.0.0",
+  "description": "Enterprise Data as a Service Terminal",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "Ömer",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^34.0.0"
+  }
+}

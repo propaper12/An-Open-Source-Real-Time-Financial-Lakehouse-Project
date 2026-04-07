@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarPro | API Anahtarı Oluştur</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #050608; color: white; font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; 
+        background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        background-size: 50px 50px; background-position: center center; transition: background-color 0.3s, color 0.3s;}
+        
+        .ambient-orb { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.3; animation: float 12s infinite ease-in-out alternate; z-index: 0; pointer-events: none;}
+        .orb-1 { width: 500px; height: 500px; background: #2962FF; top: 20%; right: -10%; }
+        .orb-2 { width: 300px; height: 300px; background: #FCD535; bottom: -20%; left: 0%; animation-delay: -3s; }
+        
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-30px, -50px) scale(1.05); } }
+
+        .glass-panel { background: rgba(13, 16, 21, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 24px; position: relative; z-index: 10; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); transition: all 0.3s; }
+        
+        .input-premium { background: rgba(5, 6, 8, 0.6); border: 1px solid #1f232b; color: white; transition: all 0.3s ease; }
+        .input-premium:focus { border-color: #2962FF; box-shadow: 0 0 0 4px rgba(41, 98, 255, 0.1); outline: none; }
+        
+        .btn-glow { background: linear-gradient(135deg, #2962FF, #1c4bd6); color: white; font-weight: 900; transition: all 0.3s ease; }
+        .btn-glow:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(41, 98, 255, 0.4); }
+
+        /* 🌞 LIGHT MODE */
+        body.light-mode { background-color: #f8fafc; color: #0f172a; background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px); }
+        body.light-mode .glass-panel { background: rgba(255, 255, 255, 0.9); border-color: rgba(0,0,0,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1); }
+        body.light-mode .input-premium { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
+        body.light-mode .text-white { color: #0f172a; }
+        body.light-mode .text-gray-400 { color: #64748b; }
+        body.light-mode .text-gray-500 { color: #475569; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen relative">
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
+    <a href="home.html" class="absolute top-8 left-8 text-gray-500 font-bold hover:text-[#2962FF] transition z-20 flex items-center gap-2"><span>←</span> Ana Sayfaya Dön</a>
+
+    <div class="glass-panel p-12 w-full max-w-md">
+        <div class="text-center mb-10">
+            <h1 class="text-3xl font-black tracking-tighter mb-2 text-white">Hemen Başla</h1>
+            <p class="text-gray-400 text-sm font-medium">API Ağ Geçidine ücretsiz katılın.</p>
+        </div>
+
+        <div class="space-y-5">
+            <div>
+                <label class="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-1 block mb-2">Geliştirici / Şirket Adı</label>
+                <input type="text" id="reg-user" class="input-premium w-full p-4 rounded-xl text-sm" placeholder="Sistemde görünecek adınız">
+            </div>
+            <div>
+                <label class="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-1 block mb-2">E-posta Adresi</label>
+                <input type="email" id="reg-email" class="input-premium w-full p-4 rounded-xl text-sm" placeholder="ornek@gmail.com">
+            </div>
+            <div>
+                <label class="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-1 block mb-2">Güvenli Şifre</label>
+                <input type="password" id="reg-pass" class="input-premium w-full p-4 rounded-xl text-sm" placeholder="En az 6 karakter">
+            </div>
+            
+            <button onclick="handleRegister()" id="reg-btn" class="btn-glow w-full py-4 rounded-xl mt-4 text-sm uppercase tracking-widest">
+                API Anahtarımı Oluştur
+            </button>
+        </div>
+
+        <div id="msg-box" class="mt-6 text-center text-sm font-bold hidden p-4 rounded-xl"></div>
+
+        <p class="text-center text-xs text-gray-500 mt-6 leading-relaxed">
+            Kayıt olarak <a href="terms.html" class="text-[#2962FF] hover:underline font-bold">Kullanım Koşullarını</a> ve <a href="privacy.html" class="text-[#2962FF] hover:underline font-bold">Gizlilik Politikasını</a> kabul etmiş olursunuz.
+        </p>
+
+        <p class="text-center text-sm text-gray-500 mt-8 font-medium border-t border-[#1f232b] pt-6">
+            Zaten API anahtarınız var mı? <a href="login.html" class="text-[#2962FF] hover:text-blue-600 transition font-bold">Giriş Yap</a>
+        </p>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if(localStorage.getItem('radar_theme') === 'light') document.body.classList.add('light-mode');
+        });
+
+        async function handleRegister() {
+    const u = document.getElementById('reg-user').value.trim();
+    const e = document.getElementById('reg-email').value.trim();
+    const p = document.getElementById('reg-pass').value;
+    const btn = document.getElementById('reg-btn');
+
+    if(!u || !e || !p) { showMsg("Lütfen tüm alanları doldurun.", "error"); return; }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailRegex.test(e)) { showMsg("Lütfen geçerli bir e-posta adresi girin.", "error"); return; }
+    if(p.length < 6) { showMsg("Şifreniz en az 6 karakter olmalıdır.", "error"); return; }
+
+    btn.textContent = "İŞLENİYOR..."; btn.disabled = true;
+
+    try {
+        const res = await fetch('http://localhost:8000/api/v1/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: u, email: e, password: p }) 
+        });
+
+        // Backend bazen JSON değil hata kodu dönebilir (429, 500 vb.)
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ message: "Sunucu hatası oluştu." }));
+            showMsg(errorData.detail || errorData.message || "Erişim reddedildi.", "error");
+            return;
+        }
+
+        const result = await res.json();
+
+        if (result.status === "success") {
+            showMsg("Hesabınız oluşturuldu! Girişe yönlendiriliyorsunuz...", "success");
+            // API Key'i kullanıcıya göstermek yerine direkt login'e atmak daha güvenli
+            setTimeout(() => window.location.href = 'login.html', 2000);
+        } else {
+            // "E-posta kullanımda" veya "Spam Koruması" mesajlarını buradan yakalıyoruz
+            showMsg(result.message || "Kayıt sırasında bir sorun oluştu.", "error");
+        }
+    } catch (err) {
+        showMsg("Sunucuya ulaşılamıyor. Lütfen backend'in çalıştığından emin olun.", "error");
+    } finally {
+        btn.textContent = "API ANAHTARIMI OLUŞTUR"; btn.disabled = false;
+    }
+}
+
+        function showMsg(text, type) {
+            const box = document.getElementById('msg-box');
+            box.textContent = text;
+            box.classList.remove('hidden');
+            box.className = type === "success" 
+                ? "mt-6 text-center text-sm font-bold p-4 rounded-xl bg-[#00ff95]/10 text-[#00ff95] border border-[#00ff95]/20 block"
+                : "mt-6 text-center text-sm font-bold p-4 rounded-xl bg-[#ff3b5c]/10 text-[#ff3b5c] border border-[#ff3b5c]/20 block";
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarPro | Kurumsal Giriş</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #050608; color: white; font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; 
+        background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        background-size: 50px 50px; background-position: center center; transition: background-color 0.3s, color 0.3s;}
+        
+        .ambient-orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.4; animation: float 10s infinite ease-in-out alternate; z-index: 0; pointer-events: none;}
+        .orb-1 { width: 400px; height: 400px; background: #2962FF; top: -10%; left: -10%; }
+        .orb-2 { width: 300px; height: 300px; background: #FCD535; bottom: -10%; right: -5%; animation-delay: -5s; }
+        
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(50px, 50px) scale(1.1); } }
+
+        .glass-panel { background: rgba(13, 16, 21, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 24px; position: relative; z-index: 10; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); transition: all 0.3s; }
+        
+        .input-premium { background: rgba(5, 6, 8, 0.6); border: 1px solid #1f232b; color: white; transition: all 0.3s ease; }
+        .input-premium:focus { border-color: #2962FF; box-shadow: 0 0 0 4px rgba(41, 98, 255, 0.1); outline: none; }
+        
+        .btn-glow { background: linear-gradient(135deg, #2962FF, #1c4bd6); color: white; font-weight: 900; transition: all 0.3s ease; }
+        .btn-glow:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(41, 98, 255, 0.4); }
+
+        /* 🌞 LIGHT MODE */
+        body.light-mode { background-color: #f8fafc; color: #0f172a; background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px); }
+        body.light-mode .glass-panel { background: rgba(255, 255, 255, 0.9); border-color: rgba(0,0,0,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1); }
+        body.light-mode .input-premium { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
+        body.light-mode .text-white { color: #0f172a; }
+        body.light-mode .text-gray-400 { color: #64748b; }
+        body.light-mode .text-gray-500 { color: #475569; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen relative">
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
+    <a href="home.html" class="absolute top-8 left-8 text-gray-500 font-bold hover:text-[#2962FF] transition z-20 flex items-center gap-2"><span>←</span> Ana Sayfaya Dön</a>
+
+    <div class="glass-panel p-12 w-full max-w-md">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-black tracking-tighter mb-2 text-white">RADAR<span class="text-[#2962FF]">PRO</span></h1>
+            <p class="text-gray-400 text-sm font-medium">Veri Ağ Geçidine (API) Bağlanın</p>
+        </div>
+
+        <div class="space-y-6">
+            <div>
+                <label class="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-1 block mb-2">E-posta Adresi</label>
+                <input type="email" id="log-email" class="input-premium w-full p-4 rounded-xl text-sm" placeholder="ornek@gmail.com">
+            </div>
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-[11px] font-black text-gray-500 uppercase tracking-widest ml-1">Şifre</label>
+                    <a href="#" class="text-[11px] text-[#2962FF] font-bold hover:underline">Şifremi Unuttum</a>
+                </div>
+                <input type="password" id="log-pass" class="input-premium w-full p-4 rounded-xl text-sm" placeholder="••••••••">
+            </div>
+            
+            <button onclick="handleLogin()" id="log-btn" class="btn-glow w-full py-4 rounded-xl mt-2 text-sm uppercase tracking-widest">
+                Sisteme Giriş Yap
+            </button>
+        </div>
+
+        <div id="msg-box" class="mt-6 text-center text-sm font-bold hidden p-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20"></div>
+
+        <p class="text-center text-sm text-gray-500 mt-10 font-medium">
+            Henüz hesabınız yok mu? <a href="register.html" class="text-[#2962FF] hover:text-blue-600 transition font-bold">Hesap Oluştur</a>
+        </p>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if(localStorage.getItem('radar_theme') === 'light') document.body.classList.add('light-mode');
+        });
+
+        async function handleLogin() {
+            const email = document.getElementById('log-email').value.trim();
+            const p = document.getElementById('log-pass').value;
+            const btn = document.getElementById('log-btn');
+            const msgBox = document.getElementById('msg-box');
+
+            if(!email || !p) {
+                msgBox.textContent = "Lütfen tüm alanları doldurun."; msgBox.classList.remove('hidden'); return;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if(!emailRegex.test(email)) {
+                msgBox.textContent = "Lütfen geçerli bir e-posta adresi girin."; msgBox.classList.remove('hidden'); return;
+            }
+
+            btn.textContent = "DOĞRULANIYOR..."; btn.disabled = true;
+
+            try {
+                const res = await fetch('http://localhost:8000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: p }) 
+                });
+                const result = await res.json();
+
+                if (result.status === "success") {
+                    localStorage.setItem('radar_api_key', result.data.api_key);
+                    localStorage.setItem('radar_user', result.data.username); 
+                    localStorage.setItem('radar_email', email); // 🚀 E-posta artık kaydediliyor
+                    localStorage.setItem('radar_tier', result.data.tier);
+                    
+                    // 🚀 Yönlendirme Düzeltildi: portal.html -> settings.html
+                    window.location.href = 'settings.html';
+                } else {
+                    msgBox.textContent = "E-posta veya şifre hatalı."; msgBox.classList.remove('hidden');
+                }
+            } catch (e) {
+                msgBox.textContent = "Sunucu bağlantısı kurulamadı."; msgBox.classList.remove('hidden');
+            } finally {
+                btn.textContent = "SİSTEME GİRİŞ YAP"; btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

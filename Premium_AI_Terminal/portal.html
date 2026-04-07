@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarPro | Müşteri Paneli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background-color: #050608; color: #d1d4dc; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; 
+            background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 50px 50px; background-position: center center; transition: background-color 0.3s, color 0.3s;
+        }
+        .hero-bg { background-image: radial-gradient(circle at 50% 0%, rgba(41, 98, 255, 0.15), transparent 60%); }
+        
+        .glass-card { background: rgba(13, 16, 21, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 20px; transition: all 0.4s ease; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .glass-card:hover { border-color: rgba(41, 98, 255, 0.3); box-shadow: 0 15px 35px rgba(41, 98, 255, 0.15); transform: translateY(-5px); }
+
+        .key-box { font-family: 'JetBrains Mono', monospace; background: #0a0c10; border: 1px solid #1f232b; border-radius: 12px; }
+        
+        .btn-launch { background: linear-gradient(135deg, #2962FF, #1c4bd6); color: white; font-weight: 900; transition: all 0.4s ease; box-shadow: 0 0 25px rgba(41, 98, 255, 0.3); }
+        .btn-launch:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 15px 35px rgba(41, 98, 255, 0.5); }
+
+        /* Light Mode */
+        body.light-mode { background-color: #f8fafc !important; color: #0f172a !important; background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px) !important; }
+        body.light-mode .text-white { color: #0f172a !important; }
+        body.light-mode .text-gray-400 { color: #475569 !important; }
+        body.light-mode .text-gray-500 { color: #64748b !important; }
+        body.light-mode .glass-card { background: rgba(255, 255, 255, 0.9) !important; border-color: rgba(0, 0, 0, 0.1) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important; }
+        body.light-mode .glass-card:hover { border-color: rgba(41, 98, 255, 0.4) !important; }
+        body.light-mode .key-box { background: #f1f5f9; border-color: #e2e8f0; }
+    </style>
+</head>
+<body class="hero-bg min-h-screen flex flex-col items-center pt-10 px-6">
+
+    <div class="w-full max-w-5xl flex justify-between items-center mb-12 glass-card p-4 px-8 mt-4 rounded-full border border-white/5 bg-[#050608]/80 backdrop-blur-xl">
+        <a href="home.html" class="text-2xl font-black text-white tracking-tighter hover:scale-105 transition-transform">RADAR<span class="text-[#2962FF]">PRO</span></a>
+        
+        <div class="flex items-center gap-6">
+            <button onclick="toggleTheme()" class="text-xl text-gray-400 hover:text-[#2962FF] transition hover:scale-110" title="Açık/Koyu Tema">🌓</button>
+            <a href="settings.html" class="text-xl text-gray-400 hover:text-[#2962FF] transition hover:scale-110" title="Hesap Ayarları">⚙️</a>
+            <div class="h-6 w-px bg-[#1f232b]"></div>
+            <button onclick="logout()" class="text-sm font-bold text-gray-500 hover:text-red-500 transition">Oturumu Kapat</button>
+        </div>
+    </div>
+
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="glass-card p-10 lg:col-span-2 flex flex-col justify-center relative overflow-hidden">
+            <div class="absolute -right-20 -top-20 w-64 h-64 bg-[#2962FF] rounded-full mix-blend-multiply filter blur-[100px] opacity-20"></div>
+            
+            <p class="text-gray-500 text-[11px] font-black uppercase tracking-widest mb-2">Hoş Geldiniz,</p>
+            <h2 class="text-4xl font-black text-white mb-8" id="dash-user">Yükleniyor...</h2>
+            
+            <div class="key-box p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex-1 overflow-hidden">
+                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1 font-sans">Secret API Key</p>
+                    <p class="text-sm font-bold text-white truncate select-all" id="dash-key">sk_live_************************</p>
+                </div>
+                <button onclick="copyKey()" class="bg-[#1f232b] hover:bg-[#2962FF] hover:border-[#2962FF] hover:text-white text-gray-300 border border-[#2a2e39] px-6 py-2.5 rounded-lg text-xs font-bold transition">Kopyala</button>
+            </div>
+            <p class="text-[11px] text-gray-500 font-medium mt-4 flex items-center gap-2">
+                <span class="text-yellow-500">⚠️</span> Anahtarınızı kimseyle paylaşmayın. Bütün yetkilendirmeniz bu key üzerinden yapılır.
+            </p>
+        </div>
+
+        <div class="glass-card p-10 flex flex-col items-center justify-center text-center border-t-4 border-t-[#2962FF]">
+            <p class="text-gray-500 text-[11px] font-black uppercase tracking-widest mb-3">Mevcut Plan</p>
+            <div id="dash-tier" class="text-3xl font-black text-white mb-8">YÜKLENİYOR</div>
+            
+            <a href="index.html" class="btn-launch w-full py-4 rounded-xl text-sm uppercase tracking-widest text-center block mb-4">
+                Termİnalİ Başlat
+            </a>
+            
+            <a href="api_docs.html" class="text-xs font-bold text-gray-400 hover:text-[#2962FF] transition underline underline-offset-4">Geliştirici Dokümanları</a>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if(localStorage.getItem('radar_theme') === 'light') document.body.classList.add('light-mode');
+
+            const user = localStorage.getItem('radar_user');
+            const key = localStorage.getItem('radar_api_key');
+            const tier = localStorage.getItem('radar_tier');
+
+            if(!key || !user) { window.location.href = 'login.html'; return; }
+
+            document.getElementById('dash-user').textContent = user;
+            document.getElementById('dash-key').textContent = key;
+            
+            const tierEl = document.getElementById('dash-tier');
+            if(tier === 'VIP') {
+                tierEl.innerHTML = '👑 VIP <span class="text-[#2962FF]">PRO</span>';
+            } else {
+                tierEl.innerHTML = '🆓 FREE TIER <br><a href="pricing.html" class="text-[10px] text-[#2962FF] underline mt-2 block">Yükselt</a>';
+                tierEl.className = "text-2xl font-black text-gray-400 mb-8";
+            }
+        });
+
+        function copyKey() {
+            const key = localStorage.getItem('radar_api_key');
+            navigator.clipboard.writeText(key).then(() => alert("API Anahtarı kopyalandı!"));
+        }
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('radar_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+        }
+    </script>
+</body>
+</html>

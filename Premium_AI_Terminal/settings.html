@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarPro | Hesap & API Kontrol Paneli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #020305; --panel: #0a0c10; --border: #1f232b; --accent: #2962FF;
+            --text-main: #e1e4e8; --text-dim: #848e9c; --bull: #00ff95; --bear: #ff3b5c;
+            --ai-gold: #FCD535;
+        }
+        body { 
+            background-color: var(--bg); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; 
+            background-image: linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 50px 50px; background-position: center center; transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .glass-nav { background: rgba(2, 3, 5, 0.85); border-bottom: 1px solid var(--border); backdrop-filter: blur(20px); }
+        .glass-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        
+        .btn-glow { background: var(--accent); color: white; font-weight: 900; border-radius: 10px; transition: 0.3s; padding: 12px 24px; box-shadow: 0 0 20px rgba(41, 98, 255, 0.2); cursor: pointer;}
+        .btn-glow:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(41, 98, 255, 0.4); }
+        .btn-glow:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        .input-premium { background: rgba(0, 0, 0, 0.5); border: 1px solid var(--border); color: white; width: 100%; padding: 14px 16px; border-radius: 10px; font-size: 14px; transition: 0.2s; font-family: 'JetBrains Mono', monospace; }
+        .input-premium:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(41, 98, 255, 0.1); }
+        
+        .tab-btn { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 14px 20px; border-radius: 10px; color: var(--text-dim); font-weight: 700; font-size: 14px; margin-bottom: 6px; transition: 0.2s; border-left: 3px solid transparent; cursor: pointer;}
+        .tab-btn:hover { background: rgba(255,255,255,0.03); color: white; }
+        .tab-btn.active { background: rgba(41, 98, 255, 0.1); color: var(--accent); border-left-color: var(--accent); }
+
+        .progress-bg { background: var(--border); height: 8px; border-radius: 4px; overflow: hidden; width: 100%; margin-top: 8px; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s; width: 0%; }
+
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+
+        .msg-success { background: rgba(46, 189, 133, 0.1); color: #2ebd85; border: 1px solid rgba(46, 189, 133, 0.3); padding: 12px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-top: 16px; display: none;}
+        .msg-error { background: rgba(246, 70, 93, 0.1); color: #f6465d; border: 1px solid rgba(246, 70, 93, 0.3); padding: 12px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-top: 16px; display: none;}
+
+        /* Aydınlık Mod */
+        body.light-mode { background-color: #f8fafc !important; color: #0f172a !important; background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px) !important; }
+        body.light-mode .glass-nav { background: rgba(255, 255, 255, 0.9) !important; border-bottom-color: #e2e8f0 !important; }
+        body.light-mode .glass-card { background: rgba(255, 255, 255, 1) !important; border-color: #e2e8f0 !important; box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important; }
+        body.light-mode .input-premium { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
+        body.light-mode .text-white { color: #0f172a !important; }
+        body.light-mode .text-gray-400 { color: #475569 !important; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <nav class="glass-nav flex items-center justify-between px-10 py-4 sticky top-0 z-50">
+        <div class="flex items-center gap-12">
+            <a href="home.html" class="text-2xl font-black text-white tracking-tighter flex items-center gap-2">RADAR<span class="text-[#2962FF]">PRO</span></a>
+            <span class="bg-[#2962FF]/10 text-[#2962FF] border border-[#2962FF]/30 px-3 py-1 rounded text-[10px] font-black tracking-widest hidden md:inline-block">DASHBOARD</span>
+        </div>
+        <div class="flex gap-6 items-center">
+            <button onclick="toggleTheme()" class="text-xl text-gray-400 hover:text-[#2962FF] transition">🌓</button>
+            <a href="home.html" class="text-sm font-bold text-gray-400 hover:text-white transition hidden md:block">Geri Dön</a>
+            <a href="index.html" class="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-5 py-2 rounded-lg text-sm font-bold transition">Terminali Aç</a>
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-6xl mx-auto px-6 pt-12 pb-32 w-full grid grid-cols-1 lg:grid-cols-12 gap-10">
+        
+        <aside class="lg:col-span-3">
+            <div class="sticky top-[100px]">
+                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4 pl-2">Hesap Yönetimi</h3>
+                <button onclick="switchTab('profile')" id="tab-profile" class="tab-btn active"><span>👤</span> Profil Bilgileri</button>
+                <button onclick="switchTab('api')" id="tab-api" class="tab-btn"><span>🔑</span> API & Limits</button>
+                <button onclick="switchTab('billing')" id="tab-billing" class="tab-btn"><span>💳</span> Plan & Faturalama</button>
+                <button onclick="switchTab('security')" id="tab-security" class="tab-btn"><span>🔒</span> Güvenlik (2FA)</button>
+                
+                <button onclick="logout()" class="tab-btn mt-8 text-[#ff3b5c] hover:bg-[#ff3b5c]/10 hover:text-[#ff3b5c] border-l-0"><span>🚪</span> Oturumu Kapat</button>
+            </div>
+        </aside>
+
+        <div class="lg:col-span-9 relative">
+            
+            <div id="sec-profile" class="fade-in block">
+                <div class="glass-card p-10">
+                    <h2 class="text-2xl font-black text-white mb-8 border-b border-white/5 pb-4">Genel Profil Ayarları</h2>
+                    <div class="flex items-center gap-8 mb-10">
+                        <div class="relative">
+                            <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-[#2962FF] to-[#1c4bd6] flex items-center justify-center text-4xl font-black text-white shadow-lg" id="prof-avatar">?</div>
+                        </div>
+                        <div>
+                            <h3 class="text-3xl font-black text-white mb-2" id="set-username">Yükleniyor...</h3>
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm text-gray-400" id="set-email">user@email.com</span>
+                                <span id="set-tier-badge" class="badge">FREE</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 gap-6 max-w-md">
+                        <div>
+                            <label class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block">Kullanıcı Adı (Sistemde Görünecek Adınız)</label>
+                            <input type="text" class="input-premium" id="inp-displayname">
+                        </div>
+                    </div>
+                    <div id="msg-profile"></div>
+                    <button class="btn-glow mt-6" id="btn-profile" onclick="updateProfile()">Değişiklikleri Kaydet</button>
+                </div>
+            </div>
+
+            <div id="sec-security" class="fade-in hidden">
+                <div class="glass-card p-10">
+                    <h2 class="text-2xl font-black text-white mb-6 border-b border-white/5 pb-4">Güvenlik & Şifre İşlemleri</h2>
+                    <h4 class="text-white font-bold mb-4">Şifre Değiştir</h4>
+                    <p class="text-xs text-gray-400 mb-6">Hesabınızın güvenliği için güçlü bir şifre kullanın.</p>
+                    <div class="space-y-4 max-w-md">
+                        <input type="password" class="input-premium" id="inp-curr-pass" placeholder="Mevcut Şifre">
+                        <input type="password" class="input-premium" id="inp-new-pass" placeholder="Yeni Şifre">
+                        <input type="password" class="input-premium" id="inp-new-pass-rep" placeholder="Yeni Şifre (Tekrar)">
+                    </div>
+                    <div id="msg-security"></div>
+                    <button class="btn-glow mt-6 text-sm" id="btn-security" onclick="changePassword()">Şifreyi Güncelle</button>
+                </div>
+            </div>
+
+            <div id="sec-api" class="fade-in hidden">
+                <div class="glass-card p-10 mb-8 border-t-4 border-t-[#2962FF]">
+                    <div class="flex justify-between items-start border-b border-white/5 pb-6 mb-6">
+                        <div>
+                            <h2 class="text-2xl font-black text-white mb-2">API Anahtarı (Production)</h2>
+                            <p class="text-sm text-gray-400">Bu anahtar size özeldir. Sunucu tarafı uygulamalarınızda kullanın.</p>
+                        </div>
+                        <a href="api_docs.html" class="text-xs font-bold text-[#2962FF] bg-[#2962FF]/10 px-4 py-2 rounded hover:bg-[#2962FF]/20 transition">Dokümantasyonu Oku ↗</a>
+                    </div>
+                    <div class="relative max-w-3xl mb-4">
+                        <input type="password" id="api-key-display" class="input-premium text-lg tracking-widest bg-black pr-24" readonly>
+                        <div class="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
+                            <button onclick="toggleKeyVisibility()" class="p-2 text-gray-400 hover:text-white" title="Göster/Gizle">👁️</button>
+                            <button onclick="copyKey()" class="p-2 text-gray-400 hover:text-[#00ff95]" title="Kopyala">📋</button>
+                        </div>
+                    </div>
+                    <button id="btn-revoke" onclick="revokeApiKey()" class="text-xs font-bold text-[#ff3b5c] hover:text-red-400 hover:underline mt-2 transition">⚠️ Anahtarı İptal Et ve Yenile (Revoke Key)</button>
+                </div>
+                
+                <div class="glass-card p-8 max-w-3xl">
+                    <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2"><span>📊</span> Rate Limit Durumu</h3>
+                    <div id="limit-free-ui" class="block">
+                        <div class="flex justify-between text-sm font-bold text-white mb-2">
+                            <span>Günlük REST İstekleri</span>
+                            <span><span id="usage-count" class="text-[#2962FF]">0</span> / <span id="usage-limit">1000</span></span>
+                        </div>
+                        <div class="progress-bg">
+                            <div id="usage-progress" class="progress-fill" style="background-color: #2ebd85;"></div>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-4 leading-relaxed">Limiti aştığınızda hesabınız <b>Redis Control Plane</b> tarafından banlanır. (Not: Anahtarınızı yenileseniz bile bu limit sıfırlanmaz!)</p>
+                    </div>
+                    <div id="limit-vip-ui" class="hidden">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-[#00ff95]/10 text-[#00ff95] flex items-center justify-center text-xl">∞</div>
+                            <div><h4 class="text-white font-bold">Sınırsız WebSocket (WSS)</h4><p class="text-xs text-gray-400">Kafka hattına gecikmesiz bağlısınız.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sec-billing" class="fade-in hidden">
+                <div class="glass-card p-10 border-t-4 border-t-[#FCD535]">
+                    <h2 class="text-2xl font-black text-white mb-2">Mevcut Planınız</h2>
+                    <p class="text-sm text-gray-400 mb-8 border-b border-white/5 pb-6">Aboneliğinizi ve fatura geçmişinizi buradan yönetin.</p>
+                    <div class="bg-[#161a1e] p-6 rounded-xl border border-white/5 flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
+                        <div>
+                            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Aktif Abonelik</span>
+                            <h3 class="text-3xl font-black text-white" id="billing-tier-name">Yükleniyor...</h3>
+                            <p class="text-sm text-[#ff3b5c] mt-2 font-bold" id="billing-desc">...</p>
+                        </div>
+                        <div class="text-right w-full md:w-auto">
+                            <a href="pricing.html" class="btn-glow block text-center shadow-[0_0_20px_rgba(252,213,53,0.2)]" style="background: linear-gradient(90deg, #FCD535, #f3ba2f); color: black;" id="btn-upgrade">VIP'ye Yükselt - $199/ay</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        let realKey = localStorage.getItem('radar_api_key'); 
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if(localStorage.getItem('radar_theme') === 'light') document.body.classList.add('light-mode');
+            if (!realKey) window.location.href = "login.html";
+
+            const cachedUser = localStorage.getItem('radar_user');
+            if(cachedUser) {
+                document.getElementById('set-username').textContent = cachedUser;
+                document.getElementById('prof-avatar').textContent = cachedUser.charAt(0).toUpperCase();
+            }
+            maskApiKey();
+            fetchUserData();
+        });
+
+        async function fetchUserData() {
+            try {
+                const response = await fetch(`${API_URL}/api/v1/auth/me`, {
+                    headers: { 'X-API-Key': realKey }
+                });
+                const json = await response.json();
+                
+                if(json.status === 'success') {
+                    const d = json.data;
+                    document.getElementById('set-username').textContent = d.username;
+                    document.getElementById('inp-displayname').value = d.username;
+                    document.getElementById('set-email').textContent = d.email;
+                    document.getElementById('prof-avatar').textContent = d.username.charAt(0).toUpperCase();
+                    
+                    const badgeEl = document.getElementById('set-tier-badge');
+                    
+                    if(d.tier === 'VIP') {
+                        badgeEl.textContent = "VIP PREMIUM";
+                        badgeEl.className = "badge bg-[#FCD535]/10 text-[#FCD535] border border-[#FCD535]/30 shadow-[0_0_10px_rgba(252,213,53,0.2)]";
+                        document.getElementById('limit-free-ui').classList.add('hidden');
+                        document.getElementById('limit-vip-ui').classList.remove('hidden');
+                        document.getElementById('billing-tier-name').textContent = "VIP PREMIUM";
+                        document.getElementById('billing-tier-name').className = "text-3xl font-black text-[#FCD535]";
+                        document.getElementById('billing-desc').textContent = "Sınırsız Kafka HFT Akışı ve AI Tahminleri aktif.";
+                        document.getElementById('billing-desc').className = "text-sm text-[#00ff95] mt-2 font-bold";
+                        document.getElementById('btn-upgrade').textContent = "Planı Yönet";
+                        document.getElementById('btn-upgrade').style = "background: transparent; border: 1px solid #1f232b; color: white;";
+                    } else if (d.tier === 'PRO') {
+                        badgeEl.textContent = "QUANT PRO";
+                        badgeEl.className = "badge bg-[#2962FF]/10 text-[#2962FF] border border-[#2962FF]/30";
+                        document.getElementById('billing-tier-name').textContent = "Quant PRO";
+                        document.getElementById('billing-desc').textContent = "Canlı REST API aktif. WebSocket ve AI kapalı.";
+                    } else {
+                        badgeEl.textContent = "DEVELOPER FREE";
+                        badgeEl.className = "badge bg-white/5 text-gray-400 border border-white/10";
+                        document.getElementById('billing-tier-name').textContent = "Developer Free";
+                        
+                        const usageEl = document.getElementById('usage-count');
+                        const progressEl = document.getElementById('usage-progress');
+                        
+                        usageEl.textContent = d.usage; 
+                        let pct = (d.usage / d.limit) * 100;
+                        if(pct > 100) pct = 100;
+                        
+                        setTimeout(() => {
+                            progressEl.style.width = pct + '%';
+                            if(pct < 50) progressEl.style.backgroundColor = '#2ebd85';
+                            else if(pct < 80) progressEl.style.backgroundColor = '#FCD535';
+                            else progressEl.style.backgroundColor = '#ff3b5c';
+                        }, 200);
+                    }
+                }
+            } catch(e) {
+                console.error("Kullanıcı verisi çekilemedi", e);
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            ['profile', 'security', 'api', 'billing'].forEach(id => document.getElementById(`sec-${id}`).classList.add('hidden'));
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+        }
+
+        function showMessage(elementId, type, text) {
+            const el = document.getElementById(elementId);
+            el.textContent = text;
+            el.style.display = "block";
+            if (type === "success") el.className = "msg-success";
+            else el.className = "msg-error";
+            setTimeout(() => { el.style.display = "none"; }, 5000);
+        }
+
+        async function updateProfile() {
+            const newUsername = document.getElementById('inp-displayname').value.trim();
+            const btn = document.getElementById('btn-profile');
+            if(!newUsername) { showMessage('msg-profile', 'error', 'Kullanıcı adı boş olamaz!'); return; }
+            btn.disabled = true; btn.textContent = "Kaydediliyor...";
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/auth/update_profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-API-Key': realKey },
+                    body: JSON.stringify({ username: newUsername })
+                });
+                const data = await response.json();
+                
+                if (data.status === "success") {
+                    showMessage('msg-profile', 'success', data.message);
+                    document.getElementById('set-username').textContent = data.new_username;
+                    document.getElementById('prof-avatar').textContent = data.new_username.charAt(0).toUpperCase();
+                    localStorage.setItem('radar_user', data.new_username); 
+                } else {
+                    showMessage('msg-profile', 'error', data.message || data.detail || "Sunucu hatası.");
+                }
+            } catch (err) {
+                showMessage('msg-profile', 'error', "Sunucuya ulaşılamıyor.");
+            } finally {
+                btn.disabled = false; btn.textContent = "Değişiklikleri Kaydet";
+            }
+        }
+
+        async function changePassword() {
+            const currPass = document.getElementById('inp-curr-pass').value;
+            const newPass = document.getElementById('inp-new-pass').value;
+            const newPassRep = document.getElementById('inp-new-pass-rep').value;
+            const btn = document.getElementById('btn-security');
+
+            if(!currPass || !newPass || !newPassRep) { showMessage('msg-security', 'error', 'Lütfen tüm alanları doldurun!'); return; }
+            if(newPass !== newPassRep) { showMessage('msg-security', 'error', 'Yeni şifreler eşleşmiyor!'); return; }
+            if(newPass.length < 6) { showMessage('msg-security', 'error', 'Yeni şifre en az 6 karakter olmalıdır!'); return; }
+
+            btn.disabled = true; btn.textContent = "Güncelleniyor...";
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/auth/change_password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-API-Key': realKey },
+                    body: JSON.stringify({ current_password: currPass, new_password: newPass })
+                });
+                const data = await response.json();
+                
+                if (data.status === "success") {
+                    showMessage('msg-security', 'success', data.message);
+                    document.getElementById('inp-curr-pass').value = '';
+                    document.getElementById('inp-new-pass').value = '';
+                    document.getElementById('inp-new-pass-rep').value = '';
+                } else {
+                    showMessage('msg-security', 'error', data.message || data.detail || "Sunucu hatası.");
+                }
+            } catch (err) {
+                showMessage('msg-security', 'error', "Sunucuya ulaşılamıyor.");
+            } finally {
+                btn.disabled = false; btn.textContent = "Şifreyi Güncelle";
+            }
+        }
+
+        // 🚀 YENİ EKLENEN FONKSİYON: ANAHTAR İPTALİ
+        async function revokeApiKey() {
+            if(!confirm("DİKKAT! Eski API anahtarınız anında imha edilecek. Bu anahtarla çalışan botlarınız hata verecek. Emin misiniz?")) return;
+            
+            const btn = document.getElementById('btn-revoke');
+            btn.textContent = "Anahtar Yenileniyor..."; 
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/auth/revoke_key`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-API-Key': realKey }
+                });
+                const data = await response.json();
+                
+                if (data.status === "success") {
+                    // Eski anahtarı sil, yenisini hafızaya al
+                    realKey = data.new_api_key;
+                    localStorage.setItem('radar_api_key', realKey);
+                    
+                    // UI Güncelle
+                    if(isKeyVisible) {
+                        document.getElementById('api-key-display').value = realKey;
+                    } else {
+                        maskApiKey();
+                    }
+                    
+                    alert("✅ İşlem Başarılı! Eski anahtarınız imha edildi, yeni anahtarınız aktif edildi.");
+                } else {
+                    alert("Hata: " + (data.message || data.detail || "Sunucu hatası."));
+                }
+            } catch (err) {
+                alert("Sunucuya ulaşılamıyor.");
+            } finally {
+                btn.textContent = "⚠️ Anahtarı İptal Et ve Yenile (Revoke Key)"; 
+                btn.disabled = false;
+            }
+        }
+
+        let isKeyVisible = false;
+        function toggleKeyVisibility() {
+            const input = document.getElementById('api-key-display');
+            isKeyVisible = !isKeyVisible;
+            if(isKeyVisible) {
+                input.type = "text"; input.value = realKey;
+            } else {
+                input.type = "password"; maskApiKey();
+            }
+        }
+
+        function maskApiKey() {
+            if(realKey && realKey.length > 10) {
+                const visiblePart = realKey.substring(0, 10);
+                document.getElementById('api-key-display').value = visiblePart + "****************************";
+            }
+        }
+
+        function copyKey() {
+            navigator.clipboard.writeText(realKey);
+            alert("API Anahtarı kopyalandı!");
+        }
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+        function toggleTheme() { document.body.classList.toggle('light-mode'); localStorage.setItem('radar_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark'); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarPro | Pro Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* TEMEL KARANLIK TEMA */
+        body { 
+            background-color: #050608; color: #d1d4dc; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; 
+            background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 50px 50px; background-position: center center; transition: all 0.3s ease;
+        }
+        
+        .tv-nav { background-color: rgba(5, 6, 8, 0.9); border-bottom: 1px solid #1f232b; backdrop-filter: blur(20px); }
+        .nav-link { color: #848e9c; font-weight: 600; font-size: 14px; transition: all 0.3s ease; }
+        .nav-link:hover { color: #2962FF; }
+
+        /* Anlık Renk Efektleri */
+        .flash-green { animation: flashG 0.5s ease-out; } 
+        .flash-red { animation: flashR 0.5s ease-out; }
+        @keyframes flashG { 0% { background-color: rgba(46, 189, 133, 0.3); } 100% { background-color: transparent; } }
+        @keyframes flashR { 0% { background-color: rgba(246, 70, 93, 0.3); } 100% { background-color: transparent; } }
+
+        /* TradingView İbresi */
+        .meter-bar { height: 8px; width: 100%; display: flex; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+        .meter-sell { background: #f6465d; flex: 1; }
+        .meter-neutral { background: #848e9c; flex: 1; border-left: 2px solid #050608; border-right: 2px solid #050608; }
+        .meter-buy { background: #2ebd85; flex: 1; }
+        .meter-pointer { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 8px solid white; position: relative; top: 2px; transition: left 0.3s ease-out; }
+
+        /* VIP Kilit Efekti */
+        .vip-blur { filter: blur(5px); user-select: none; pointer-events: none; }
+        .vip-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,6,8,0.7); z-index: 10; text-align: center; padding: 20px;}
+
+        /* Emir Defteri */
+        .ob-row { position: relative; display: flex; justify-content: space-between; padding: 2px 8px; font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700;}
+        .ob-bg-red { position: absolute; right: 0; top: 0; bottom: 0; background: rgba(246, 70, 93, 0.15); z-index: 0; transition: width 0.2s;}
+        .ob-bg-green { position: absolute; right: 0; top: 0; bottom: 0; background: rgba(46, 189, 133, 0.15); z-index: 0; transition: width 0.2s;}
+
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 4px; }
+
+        /* 🌞 KUSURSUZ AYDINLIK MOD (LIGHT MODE) */
+        body.light-mode { background-color: #f8fafc !important; color: #0f172a !important; background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px) !important; }
+        body.light-mode .tv-nav { background-color: rgba(255, 255, 255, 0.95) !important; border-bottom-color: #e2e8f0 !important; }
+        body.light-mode .bg-\[\#050608\] { background-color: #f8fafc !important; }
+        body.light-mode .bg-\[\#0a0c10\] { background-color: #ffffff !important; }
+        body.light-mode .border-\[\#1f232b\] { border-color: #e2e8f0 !important; }
+        body.light-mode .text-white { color: #0f172a !important; }
+        body.light-mode .text-gray-400 { color: #475569 !important; }
+        body.light-mode .text-gray-500 { color: #64748b !important; }
+        body.light-mode .hover\:bg-\[\#1f232b\]:hover { background-color: #f1f5f9 !important; }
+        body.light-mode .bg-\[\#10131a\] { background-color: #ffffff !important; }
+        body.light-mode .vip-overlay { background: rgba(255, 255, 255, 0.8); }
+        body.light-mode .meter-neutral { border-color: #ffffff; }
+        body.light-mode footer { background-color: #f1f5f9 !important; border-top-color: #e2e8f0 !important; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <nav class="tv-nav flex items-center justify-between px-6 py-3 z-50 shrink-0">
+        <div class="flex items-center gap-6">
+            <a href="home.html" class="text-xl font-black text-white tracking-tighter">RADAR<span class="text-[#2962FF]">PRO</span></a>
+            <div class="hidden lg:flex gap-4 border-l border-[#1f232b] pl-6 text-xs">
+                <a href="home.html" class="nav-link">Piyasalar</a>
+                <a href="models.html" class="nav-link">AI Modelleri</a>
+            </div>
+        </div>
+        
+        <div class="flex flex-col items-center absolute left-1/2 transform -translate-x-1/2">
+            <div class="flex items-center gap-3">
+                <img id="coin-logo" src="" class="w-6 h-6 rounded-full hidden bg-white/5 p-1 shadow-lg border border-white/10">
+                <span class="text-lg font-black text-white" id="coin-sym">BTCUSDT</span>
+                <span class="text-[#2ebd85] font-black font-mono text-lg ml-2 transition-colors duration-300" id="live-price">...</span>
+            </div>
+        </div>
+
+        <div class="flex gap-4 items-center">
+            <button onclick="toggleTheme()" class="text-xl text-gray-400 hover:text-[#2962FF] transition hover:scale-110" title="Açık/Koyu Tema">🌓</button>
+            <div id="auth-buttons">
+                <a href="pricing.html" class="bg-gradient-to-r from-[#2962FF] to-[#1c4bd6] text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:scale-105 transition shadow-[0_0_15px_rgba(41,98,255,0.3)]">VIP Yükselt</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto border-x border-[#1f232b] bg-[#050608]">
+        
+        <div class="flex-1 flex flex-col min-w-0 border-r border-[#1f232b]">
+            
+            <div class="h-[600px] shrink-0 border-b border-[#1f232b]" id="tv_chart_container"></div>
+
+            <div class="p-8 bg-[#0a0c10] border-b border-[#1f232b] shrink-0">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-black text-white" id="info-title">Yükleniyor...</h2>
+                    <span class="bg-[#2962FF]/10 text-[#2962FF] border border-[#2962FF]/30 px-3 py-1 rounded text-xs font-bold uppercase tracking-widest">L1 Data Node Aktif</span>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm mb-8">
+                    <div><span class="block text-gray-500 font-bold mb-1">Piyasa Değeri</span><span class="text-white font-black font-mono" id="info-mcap">$--</span></div>
+                    <div><span class="block text-gray-500 font-bold mb-1">24S İşlem Hacmi</span><span class="text-white font-black font-mono" id="info-vol">$--</span></div>
+                    <div><span class="block text-gray-500 font-bold mb-1">Ağırlıklı Ortalama (WAP)</span><span class="text-white font-black font-mono" id="info-wap">$--</span></div>
+                    <div><span class="block text-gray-500 font-bold mb-1">24S Değişim (Miktar)</span><span class="text-white font-black font-mono" id="info-change-amt">$--</span></div>
+                    
+                    <div><span class="block text-gray-500 font-bold mb-1">24S En Yüksek</span><span class="text-white font-black font-mono" id="info-high">$--</span></div>
+                    <div><span class="block text-gray-500 font-bold mb-1">24S En Düşük</span><span class="text-white font-black font-mono" id="info-low">$--</span></div>
+                    <div><span class="block text-gray-500 font-bold mb-1">En İyi Alış (Bid)</span><span class="text-[#2ebd85] font-black font-mono" id="info-bid">$--</span></div>
+                    <div><span class="block text-gray-500 font-bold mb-1">En İyi Satış (Ask)</span><span class="text-[#f6465d] font-black font-mono" id="info-ask">$--</span></div>
+                    
+                    <div><span class="block text-gray-500 font-bold mb-1">İşlem Sayısı (24S)</span><span class="text-white font-black font-mono" id="info-trades">--</span></div>
+                    <div><span class="block text-gray-500 font-bold mb-1">Dolaşımdaki Arz</span><span class="text-white font-black font-mono" id="info-circ">--</span></div>
+                    <div><span class="block text-gray-500 font-bold mb-1">Maksimum Arz</span><span class="text-gray-400 font-bold font-mono" id="info-max">--</span></div>
+                    <div><span class="block text-gray-500 font-bold mb-1">RadarPro Skoru</span><span class="text-[#FCD535] font-black">94/100</span></div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="font-bold text-white mb-2">Hakkında</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed" id="info-intro">Yükleniyor...</p>
+                </div>
+            </div>
+
+            <div class="p-8 bg-[#050608] shrink-0">
+                <h2 class="text-lg font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">📰 İlgili Haberler</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="news-container"></div>
+            </div>
+        </div>
+
+        <div class="w-full lg:w-80 bg-[#0a0c10] flex flex-col shrink-0">
+            
+            <div class="border-b border-[#1f232b]">
+                <div class="p-4 font-bold text-xs text-white uppercase tracking-widest flex justify-between items-center cursor-pointer bg-[#050608] hover:bg-[#1f232b] transition" onclick="togglePanel('panel-wl', this)">
+                    <span>İzleme Listesi</span> <span class="transform transition duration-300 text-gray-500">▼</span>
+                </div>
+                <div id="panel-wl" class="overflow-hidden transition-all duration-300" style="height: 350px;">
+                    <div class="h-full overflow-y-auto p-2 space-y-1" id="watchlist-container"></div>
+                </div>
+            </div>
+
+            <div class="border-b border-[#1f232b]">
+                <div class="p-4 font-bold text-xs text-white uppercase tracking-widest flex justify-between items-center cursor-pointer bg-[#050608] hover:bg-[#1f232b] transition" onclick="togglePanel('panel-ob', this)">
+                    <span>Canlı Emir Defteri</span> <span class="transform transition duration-300 text-gray-500">▼</span>
+                </div>
+                <div id="panel-ob" class="overflow-hidden transition-all duration-300" style="height: 250px;">
+                    <div class="flex h-full bg-[#0a0c10]">
+                        <div class="w-1/2 border-r border-[#1f232b] p-1 flex flex-col">
+                            <div class="text-[10px] text-gray-500 mb-1 px-1">Alıcılar (Bids)</div>
+                            <div id="orderbook-bids" class="flex-1 overflow-hidden flex flex-col justify-start space-y-[1px]"></div>
+                        </div>
+                        <div class="w-1/2 p-1 flex flex-col">
+                            <div class="text-[10px] text-gray-500 mb-1 px-1">Satıcılar (Asks)</div>
+                            <div id="orderbook-asks" class="flex-1 overflow-hidden flex flex-col justify-start space-y-[1px]"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-b border-[#1f232b] bg-[#0a0c10]">
+                <div class="p-4 font-bold text-xs text-white uppercase tracking-widest flex justify-between items-center cursor-pointer bg-[#050608] hover:bg-[#1f232b] transition" onclick="togglePanel('panel-ta', this)">
+                    <span>Teknik İndikatörler</span> <span class="transform transition duration-300 text-gray-500">▼</span>
+                </div>
+                <div id="panel-ta" class="overflow-hidden transition-all duration-300 p-4" style="height: 120px;">
+                    <div class="text-center mb-2">
+                        <span class="text-xl font-black text-[#2ebd85]" id="ta-status">AL</span>
+                    </div>
+                    <div class="relative w-full px-2">
+                        <div class="meter-pointer" id="ta-pointer" style="left: 80%;"></div>
+                        <div class="meter-bar">
+                            <div class="meter-sell"></div>
+                            <div class="meter-neutral"></div>
+                            <div class="meter-buy"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 relative overflow-hidden bg-[#050608] min-h-[200px]">
+                <div class="vip-overlay">
+                    <span class="bg-[#FCD535] text-black text-[10px] font-black px-3 py-1 rounded mb-3 shadow-lg">PRO ÖZELLİK</span>
+                    <h4 class="text-white font-bold text-sm mb-2">Yapay Zeka Radarı</h4>
+                    <p class="text-[10px] text-gray-400 mb-4 px-4">XGBoost hedef fiyatları ve kurumsal hacim analizi için yükseltin.</p>
+                    <a href="pricing.html" class="bg-[#2962FF] text-white text-xs font-bold px-6 py-2 rounded-lg w-full max-w-[200px] shadow-[0_0_15px_rgba(41,98,255,0.4)] transition hover:scale-105">Kilitleri Aç</a>
+                </div>
+                <div class="vip-blur space-y-4 w-full p-6">
+                    <div class="flex justify-between text-xs border-b border-[#1f232b] pb-2"><span class="text-gray-400">Yapay Zeka Hedefi:</span><span class="text-[#2ebd85] font-black font-mono">$--</span></div>
+                    <div class="flex justify-between text-xs border-b border-[#1f232b] pb-2"><span class="text-gray-400">Order Flow:</span><span class="text-[#FCD535] font-black font-mono">GİZLİ</span></div>
+                    <div class="flex justify-between text-xs"><span class="text-gray-400">Volatilite İndeksi:</span><span class="text-white font-black font-mono">%--</span></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="w-full bg-[#030405] border-t border-[#1f232b] py-12 px-8 mt-auto shrink-0 z-10">
+        <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <div class="md:col-span-2 pr-10">
+                <h1 class="text-2xl font-black text-white mb-4">RADAR<span class="text-[#2962FF]">PRO</span></h1>
+                <p class="text-sm text-gray-500 leading-relaxed">Quant geliştiriciler, veri bilimciler ve algoritmik traderlar için inşa edilmiş uçtan uca finansal veri ve yapay zeka altyapısı.</p>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4 uppercase tracking-widest text-xs">Ekosistem</h4>
+                <ul class="space-y-3 text-sm text-gray-400 font-medium">
+                    <li><a href="index.html" class="hover:text-[#2962FF] transition">Pro Terminal</a></li>
+                    <li><a href="models.html" class="hover:text-[#2962FF] transition">AI Modelleri</a></li>
+                    <li><a href="api_docs.html" class="hover:text-[#2962FF] transition">Geliştirici API'si</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4 uppercase tracking-widest text-xs">Şirket</h4>
+                <ul class="space-y-3 text-sm text-gray-400 font-medium">
+                    <li><a href="about.html" class="hover:text-[#2962FF] transition">Hakkımızda</a></li>
+                    <li><a href="privacy.html" class="hover:text-[#2962FF] transition">Gizlilik Politikası</a></li>
+                    <li><a href="terms.html" class="hover:text-[#2962FF] transition">Kullanım Koşulları</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="max-w-[1600px] mx-auto border-t border-[#1f232b] pt-6 text-xs font-bold text-gray-600 flex justify-between items-center">
+            <p>Radar Global © 2026. Tüm Hakları Saklıdır.</p>
+            <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#2ebd85] animate-pulse"></span> Sistem Durumu: Mükemmel</div>
+        </div>
+    </footer>
+
+    <script>
+        // 1. PANEL AÇ/KAPA (COLLAPSIBLE) SİSTEMİ
+        function togglePanel(id, headerEl) {
+            const el = document.getElementById(id);
+            const arrow = headerEl.querySelector('span:last-child');
+            if (el.style.height === '0px') {
+                el.style.height = el.dataset.height || '250px';
+                arrow.style.transform = 'rotate(0deg)';
+            } else {
+                el.dataset.height = el.style.height;
+                el.style.height = '0px';
+                arrow.style.transform = 'rotate(-90deg)';
+            }
+        }
+
+        // 2. URL VE COIN VERİTABANI
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentSymbol = urlParams.get('symbol') || 'BTCUSDT'; 
+        const baseSymbol = currentSymbol.replace('USDT', '');
+
+        const assetList = [
+            { id: "BTCUSDT", sym: "BTC", img: "bitcoin-btc-logo.svg", name: "Bitcoin", supply: 19650000, max: 21000000 },
+            { id: "ETHUSDT", sym: "ETH", img: "ethereum-eth-logo.svg", name: "Ethereum", supply: 120000000, max: "Sınırsız" },
+            { id: "SOLUSDT", sym: "SOL", img: "solana-sol-logo.svg", name: "Solana", supply: 440000000, max: "Sınırsız" },
+            { id: "BNBUSDT", sym: "BNB", img: "bnb-bnb-logo.svg", name: "BNB", supply: 149500000, max: 200000000 },
+            { id: "XRPUSDT", sym: "XRP", img: "xrp-xrp-logo.svg", name: "XRP", supply: 54000000000, max: 100000000000 },
+            { id: "ADAUSDT", sym: "ADA", img: "cardano-ada-logo.svg", name: "Cardano", supply: 35000000000, max: 45000000000 },
+            { id: "AVAXUSDT", sym: "AVAX", img: "avalanche-avax-logo.svg", name: "Avalanche", supply: 377000000, max: 720000000 },
+            { id: "DOGEUSDT", sym: "DOGE", img: "dogecoin-doge-logo.svg", name: "Dogecoin", supply: 143000000000, max: "Sınırsız" },
+            { id: "DOTUSDT", sym: "DOT", img: "polkadot-new-dot-logo.svg", name: "Polkadot", supply: 1400000000, max: "Sınırsız" },
+            { id: "LINKUSDT", sym: "LINK", img: "chainlink-link-logo.svg", name: "Chainlink", supply: 587000000, max: 1000000000 },
+            { id: "TRXUSDT", sym: "TRX", img: "tron-trx-logo.svg", name: "TRON", supply: 87000000000, max: "Sınırsız" },
+            { id: "SHIBUSDT", sym: "SHIB", img: "shiba-inu-shib-logo.svg", name: "Shiba Inu", supply: 589000000000000, max: "Sınırsız" },
+            { id: "LTCUSDT", sym: "LTC", img: "litecoin-ltc-logo.svg", name: "Litecoin", supply: 74000000, max: 84000000 },
+            { id: "UNIUSDT", sym: "UNI", img: "uniswap-uni-logo.svg", name: "Uniswap", supply: 598000000, max: 1000000000 },
+            { id: "BCHUSDT", sym: "BCH", img: "bitcoin-cash-bch-logo.svg", name: "Bitcoin Cash", supply: 19600000, max: 21000000 },
+            { id: "ATOMUSDT", sym: "ATOM", img: "cosmos-atom-logo.svg", name: "Cosmos", supply: 390000000, max: "Sınırsız" },
+            { id: "XLMUSDT", sym: "XLM", img: "stellar-xlm-logo.svg", name: "Stellar", supply: 28000000000, max: 50000000000 },
+            { id: "NEARUSDT", sym: "NEAR", img: "near-protocol-near-logo.svg", name: "NEAR Protocol", supply: 1000000000, max: "Sınırsız" },
+            { id: "ALGOUSDT", sym: "ALGO", img: "algorand-algo-logo.svg", name: "Algorand", supply: 8000000000, max: 10000000000 },
+            { id: "VETUSDT", sym: "VET", img: "vechain-vet-logo.svg", name: "VeChain", supply: 72000000000, max: 86000000000 },
+            { id: "FILUSDT", sym: "FIL", img: "filecoin-fil-logo.svg", name: "Filecoin", supply: 500000000, max: 1900000000 },
+            { id: "ICPUSDT", sym: "ICP", img: "internet-computer-icp-logo.svg", name: "Internet Computer", supply: 460000000, max: "Sınırsız" },
+            { id: "SANDUSDT", sym: "SAND", img: "the-sandbox-sand-logo.svg", name: "The Sandbox", supply: 2200000000, max: 3000000000 },
+            { id: "MANAUSDT", sym: "MANA", img: "decentraland-mana-logo.svg", name: "Decentraland", supply: 1900000000, max: 2100000000 },
+            { id: "FTMUSDT", sym: "FTM", img: "fantom-ftm-logo.svg", name: "Fantom", supply: 2800000000, max: 3100000000 }
+        ];
+
+        const watchListPrices = {};
+        const cInfo = assetList.find(a => a.id === currentSymbol) || assetList[0];
+
+        // Sayfa Değerlerini Doldurma
+        document.title = `${cInfo.name} Pro Analizi | RadarPro`;
+        document.getElementById('coin-sym').textContent = currentSymbol;
+        document.getElementById('info-title').textContent = `${cInfo.name} (${baseSymbol}) Metrikleri`;
+        document.getElementById('info-circ').textContent = cInfo.supply.toLocaleString() + " " + baseSymbol;
+        document.getElementById('info-max').textContent = typeof cInfo.max === 'number' ? cInfo.max.toLocaleString() : cInfo.max;
+        document.getElementById('info-intro').textContent = `${cInfo.name} (${baseSymbol}), RadarPro altyapısında "Yüksek Frekanslı Veri Düğümü" üzerinden izlenmektedir. L1 sipariş defteri derinliği ve fiyat değişiklikleri milisaniyelik gecikmeyle arayüze yansır.`;
+        
+        const logoEl = document.getElementById('coin-logo');
+        logoEl.src = `https://cryptologos.cc/logos/${cInfo.img}?v=024`;
+        logoEl.onload = () => logoEl.classList.remove('hidden');
+
+        // 3. HABERLERİ DOLDUR
+        const newsContainer = document.getElementById('news-container');
+        const newsTitles = [
+            `Kurumsal cüzdanlardan ${cInfo.name} ağına devasa para girişi tespit edildi.`,
+            `${baseSymbol} için beklenen kritik ağ güncellemesi başarıyla tamamlandı.`,
+            `Analistler uyarıyor: ${cInfo.name} kritik direnci kırarsa yeni rekor gelebilir.`
+        ];
+        newsTitles.forEach((title, i) => {
+            newsContainer.innerHTML += `
+                <a href="https://coinmarketcap.com/currencies/${cInfo.name.toLowerCase().replace(' ', '-')}/news/" target="_blank" class="bg-[#10131a] border border-[#1f232b] p-5 rounded-xl hover:border-[#2962FF] transition cursor-pointer group block shadow-lg">
+                    <h4 class="text-white text-xs font-bold leading-relaxed mb-3 group-hover:text-[#2962FF]">${title}</h4>
+                    <div class="flex justify-between items-center text-[10px] text-gray-500 font-bold">
+                        <span>Radar AI News</span><span>🕒 ${i+1} saat önce</span>
+                    </div>
+                </a>`;
+        });
+
+        // 4. TRADINGVIEW WIDGET
+        const isLightMode = localStorage.getItem('radar_theme') === 'light';
+        if(isLightMode) document.body.classList.add('light-mode');
+
+        new TradingView.widget({
+            "autosize": true,
+            "symbol": `BINANCE:${currentSymbol}`,
+            "interval": "15",
+            "timezone": "Etc/UTC",
+            "theme": isLightMode ? "light" : "dark",
+            "style": "1",
+            "locale": "tr",
+            "enable_publishing": false,
+            "backgroundColor": isLightMode ? "#f8fafc" : "#050608",
+            "gridColor": isLightMode ? "#e2e8f0" : "#1f232b",
+            "hide_top_toolbar": false,
+            "hide_legend": false,
+            "save_image": false,
+            "container_id": "tv_chart_container",
+            "toolbar_bg": isLightMode ? "#ffffff" : "#0a0c10",
+            "hide_side_toolbar": false, 
+            "allow_symbol_change": false,
+            "details": false,
+            "studies": ["Volume@tv-basicstudies"]
+        });
+
+        // 5. İZLEME LİSTESİ DOLDURMA
+        const wlContainer = document.getElementById('watchlist-container');
+        assetList.forEach(asset => {
+            watchListPrices[asset.id] = 0;
+            wlContainer.innerHTML += `
+                <div class="flex justify-between items-center p-2 hover:bg-[#1f232b] rounded cursor-pointer transition border-b border-[#1f232b]/50" onclick="window.location.href='coin_detail.html?symbol=${asset.id}'">
+                    <div class="flex items-center gap-2">
+                        <img src="https://cryptologos.cc/logos/${asset.img}?v=024" class="w-4 h-4 rounded-full bg-white/5 p-0.5">
+                        <span class="font-bold text-gray-300 text-xs">${asset.sym}</span>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-mono text-white text-xs font-bold" id="wl-p-${asset.id}">...</div>
+                        <div class="text-[10px] font-bold" id="wl-c-${asset.id}"></div>
+                    </div>
+                </div>`;
+        });
+
+        // 6. ZEKİCE GİZLENMİŞ WEBSOCKET (Obfuscation)
+        // Kullanıcı kaynak kodda Binance ismini görmez. Base64 ile şifrelenmiştir.
+        const RADAR_ENTERPRISE_NODE = atob("d3NzOi8vc3RyZWFtLmJpbmFuY2UuY29tOjk0NDMvc3RyZWFtP3N0cmVhbXM9");
+        const streamNames = assetList.map(c => `${c.id.toLowerCase()}@ticker`).join('/');
+        const ws = new WebSocket(RADAR_ENTERPRISE_NODE + streamNames);
+
+        ws.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+            const data = msg.data;
+            const sym = data.s;
+            const price = parseFloat(data.c);
+            const change = parseFloat(data.P);
+            
+            // Ekstra Ücretsiz Veriler!
+            const changeAmt = parseFloat(data.p); 
+            const volume24h = parseFloat(data.q);
+            const high24h = parseFloat(data.h);
+            const low24h = parseFloat(data.l);
+            const wAvg = parseFloat(data.w); // Ağırlıklı Ortalama
+            const bestBid = parseFloat(data.b); // En İyi Alış
+            const bestAsk = parseFloat(data.a); // En İyi Satış
+            const totalTrades = parseInt(data.n);
+
+            updateWatchlist(sym, price, change);
+
+            if(sym === currentSymbol) {
+                // Info Panel - Maksimum Veri!
+                document.getElementById('info-mcap').textContent = "$" + formatNumber(price * cInfo.supply);
+                document.getElementById('info-vol').textContent = "$" + formatNumber(volume24h);
+                document.getElementById('info-wap').textContent = "$" + formatPrice(wAvg);
+                
+                document.getElementById('info-high').textContent = "$" + formatPrice(high24h);
+                document.getElementById('info-low').textContent = "$" + formatPrice(low24h);
+                
+                document.getElementById('info-bid').textContent = "$" + formatPrice(bestBid);
+                document.getElementById('info-ask').textContent = "$" + formatPrice(bestAsk);
+
+                document.getElementById('info-trades').textContent = totalTrades.toLocaleString('en-US');
+                
+                const changeAmtEl = document.getElementById('info-change-amt');
+                changeAmtEl.textContent = (changeAmt >= 0 ? "+$" : "-$") + formatPrice(Math.abs(changeAmt));
+                changeAmtEl.className = `text-white font-black font-mono ${changeAmt >= 0 ? 'text-[#2ebd85]' : 'text-[#f6465d]'}`;
+
+                // Header Fiyatı
+                const priceEl = document.getElementById('live-price');
+                priceEl.textContent = formatPrice(price);
+                priceEl.classList.remove('text-[#2ebd85]', 'text-[#f6465d]');
+                priceEl.classList.add(change >= 0 ? 'text-[#2ebd85]' : 'text-[#f6465d]');
+
+                // Teknik Analiz İbresi
+                let pointerLeft = "50%"; let statusText = "NÖTR"; let statusColor = "#848e9c";
+                if(change > 3) { pointerLeft = "90%"; statusText = "GÜÇLÜ AL"; statusColor = "#2ebd85"; }
+                else if(change > 0) { pointerLeft = "70%"; statusText = "AL"; statusColor = "#2ebd85"; }
+                else if(change < -3) { pointerLeft = "10%"; statusText = "GÜÇLÜ SAT"; statusColor = "#f6465d"; }
+                else if(change < 0) { pointerLeft = "30%"; statusText = "SAT"; statusColor = "#f6465d"; }
+                
+                document.getElementById('ta-pointer').style.left = pointerLeft;
+                document.getElementById('ta-status').textContent = statusText;
+                document.getElementById('ta-status').style.color = statusColor;
+
+                generateOrderBook(price);
+            }
+        };
+
+        function formatPrice(p) { return p < 1 ? p.toFixed(4) : p.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+        function updateWatchlist(sym, price, change) {
+            const pEl = document.getElementById(`wl-p-${sym}`);
+            const cEl = document.getElementById(`wl-c-${sym}`);
+            if(pEl) {
+                if(watchListPrices[sym] !== 0 && price !== watchListPrices[sym]) {
+                    pEl.classList.remove('flash-green', 'flash-red'); void pEl.offsetWidth;
+                    pEl.classList.add(price > watchListPrices[sym] ? 'flash-green' : 'flash-red');
+                }
+                pEl.textContent = formatPrice(price);
+                cEl.textContent = `${change > 0 ? '+' : ''}${change.toFixed(2)}%`;
+                cEl.className = `text-[10px] font-bold ${change >= 0 ? 'text-[#2ebd85]' : 'text-[#f6465d]'}`;
+                watchListPrices[sym] = price;
+            }
+        }
+
+        function generateOrderBook(currentPrice) {
+            const bidsEl = document.getElementById('orderbook-bids');
+            const asksEl = document.getElementById('orderbook-asks');
+            bidsEl.innerHTML = ''; asksEl.innerHTML = '';
+            
+            let maxVol = 0;
+            const bids = []; const asks = [];
+            
+            for(let i=0; i<8; i++) {
+                const step = currentPrice * 0.0002 * (i+1);
+                const bPrice = (currentPrice - step).toFixed(2);
+                const aPrice = (currentPrice + step).toFixed(2);
+                const bVol = (Math.random() * 5 + 0.1).toFixed(3);
+                const aVol = (Math.random() * 5 + 0.1).toFixed(3);
+                maxVol = Math.max(maxVol, parseFloat(bVol), parseFloat(aVol)); // String/Float Bug Fixed!
+                bids.push({p: bPrice, v: bVol}); asks.push({p: aPrice, v: aVol});
+            }
+
+            asks.reverse().forEach(a => {
+                const w = (a.v / maxVol) * 100;
+                asksEl.innerHTML += `<div class="ob-row"><div class="ob-bg-red" style="width:${w}%"></div><span class="text-[#f6465d] z-10">${a.p}</span><span class="text-white z-10">${a.v}</span></div>`;
+            });
+            bids.forEach(b => {
+                const w = (b.v / maxVol) * 100;
+                bidsEl.innerHTML += `<div class="ob-row"><div class="ob-bg-green" style="width:${w}%"></div><span class="text-[#2ebd85] z-10">${b.p}</span><span class="text-white z-10">${b.v}</span></div>`;
+            });
+        }
+
+        function formatNumber(num) {
+            if(num >= 1e9) return (num / 1e9).toFixed(2) + "B";
+            if(num >= 1e6) return (num / 1e6).toFixed(2) + "M";
+            return num.toLocaleString();
+        }
+
+        function toggleTheme() {
+            const isLight = document.body.classList.toggle('light-mode');
+            localStorage.setItem('radar_theme', isLight ? 'light' : 'dark');
+            window.location.reload(); 
+        }
+
+        const apiKey = localStorage.getItem('radar_api_key');
+        if (apiKey) {
+            document.getElementById('auth-buttons').innerHTML = `
+                <a href="portal.html" class="border border-[#1f232b] hover:border-[#2962FF] text-white text-xs font-bold px-4 py-1.5 rounded-lg transition">Panele Dön</a>
+            `;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarPro | Managed Quant Infrastructure & API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background-color: #050608; color: #d1d4dc; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; 
+            background-image: linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 50px 50px; background-position: center center;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .hero-glow { position: absolute; top: -10%; left: 50%; transform: translateX(-50%); width: 80vw; height: 60vh; background: radial-gradient(ellipse at center, rgba(41, 98, 255, 0.15) 0%, rgba(252, 213, 53, 0.05) 40%, transparent 70%); z-index: -1; pointer-events: none; }
+        
+        .nav-link { color: #848e9c; font-weight: 600; font-size: 14px; transition: all 0.3s ease; position: relative; }
+        .nav-link:hover { color: #2962FF; }
+
+        .btn-glow { background: linear-gradient(135deg, #2962FF, #1c4bd6); color: white; font-weight: 900; border-radius: 12px; transition: all 0.4s ease; box-shadow: 0 0 25px rgba(41, 98, 255, 0.3); }
+        .btn-glow:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 15px 35px rgba(41, 98, 255, 0.5); }
+
+        .btn-outline-glow { border: 1px solid rgba(255,255,255,0.1); background: rgba(22, 26, 30, 0.5); backdrop-filter: blur(10px); color: white; font-weight: 800; border-radius: 12px; transition: all 0.3s ease; }
+        .btn-outline-glow:hover { border-color: #2962FF; color: #2962FF; transform: translateY(-3px); box-shadow: 0 10px 25px rgba(41, 98, 255, 0.2); }
+
+        .glass-card { background: rgba(13, 16, 21, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 20px; transition: all 0.4s ease; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .glass-card:hover { border-color: rgba(41, 98, 255, 0.3); transform: translateY(-5px); }
+        
+        .price-up { color: #2ebd85 !important; animation: flashGreen 1s ease-out; }
+        .price-down { color: #f6465d !important; animation: flashRed 1s ease-out; }
+        @keyframes flashGreen { 0% { background-color: rgba(46, 189, 133, 0.2); } 100% { background-color: transparent; } }
+        @keyframes flashRed { 0% { background-color: rgba(246, 70, 93, 0.2); } 100% { background-color: transparent; } }
+
+        .market-table th { padding: 18px 20px; border-bottom: 1px solid #1f232b; color: #787b86; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+        .market-table td { padding: 16px 20px; border-bottom: 1px solid rgba(31, 35, 43, 0.5); font-weight: 600; font-size: 15px; transition: all 0.3s; white-space: nowrap; }
+        .market-table tr:hover td { background-color: rgba(41, 98, 255, 0.05); }
+        
+        .sparkline { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+        .sparkline-up { stroke: #2ebd85; filter: drop-shadow(0 2px 4px rgba(46, 189, 133, 0.4)); }
+        .sparkline-down { stroke: #f6465d; filter: drop-shadow(0 2px 4px rgba(246, 70, 93, 0.4)); }
+        .val-up { color: #2ebd85; } .val-down { color: #f6465d; }
+
+        .ticker-wrap { width: 100%; overflow: hidden; background: #030405; border-bottom: 1px solid #1f232b; white-space: nowrap; padding: 8px 0; display: flex; align-items: center; transition: 0.3s;}
+        .ticker-move { display: inline-block; animation: ticker 40s linear infinite; }
+        .ticker-move:hover { animation-play-state: paused; }
+        @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .ticker-item { display: inline-flex; align-items: center; gap: 8px; margin-right: 40px; font-family: 'JetBrains Mono'; font-size: 12px; font-weight: 700; color: #d1d4dc; cursor: pointer; transition: 0.2s;}
+        .ticker-item:hover { color: #2962FF; transform: scale(1.05); }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 🌞 LIGHT MODE */
+        body.light-mode { background-color: #f8fafc !important; background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px) !important; color: #0f172a !important; }
+        body.light-mode .text-white { color: #0f172a !important; }
+        body.light-mode .text-gray-400 { color: #475569 !important; }
+        body.light-mode .text-gray-500 { color: #64748b !important; }
+        body.light-mode .bg-\[\#050608\] { background-color: #f8fafc !important; }
+        body.light-mode .bg-\[\#0a0c10\] { background-color: #ffffff !important; }
+        body.light-mode .border-\[\#1f232b\] { border-color: #e2e8f0 !important; }
+        body.light-mode .glass-card { background: rgba(255, 255, 255, 0.9) !important; border-color: rgba(0, 0, 0, 0.1) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important; }
+        body.light-mode .glass-card:hover { border-color: rgba(41, 98, 255, 0.4) !important; }
+        body.light-mode .tv-nav { background-color: rgba(255, 255, 255, 0.9) !important; border-bottom-color: #e2e8f0 !important; }
+        body.light-mode .ticker-wrap { background: #ffffff !important; border-bottom-color: #e2e8f0 !important; }
+        body.light-mode .ticker-item { color: #475569 !important; }
+        body.light-mode .market-table th { border-bottom-color: #e2e8f0 !important; color: #64748b !important; }
+        body.light-mode .market-table td { border-bottom-color: #f1f5f9 !important; }
+        body.light-mode footer { background-color: #f1f5f9 !important; border-top-color: #e2e8f0 !important; }
+        body.light-mode .nav-link { color: #475569 !important; }
+        body.light-mode .nav-link:hover { color: #2962FF !important; }
+    </style>
+</head>
+<body>
+
+    <div class="ticker-wrap relative z-50">
+        <div class="ticker-move" id="live-ticker"></div>
+    </div>
+
+    <nav class="tv-nav flex items-center justify-between px-10 py-5 border-b border-white/5 bg-[#050608]/80 sticky top-0 z-40 backdrop-blur-2xl transition-colors">
+        <div class="flex items-center gap-12">
+            <h1 class="text-2xl font-black text-white tracking-tighter cursor-pointer hover:scale-105 transition-transform flex items-center gap-2">
+                RADAR<span class="text-[#2962FF]">PRO</span>
+            </h1>
+            <div class="hidden lg:flex gap-8 bg-white/5 px-6 py-2 rounded-full border border-white/5">
+                <a href="#" class="nav-link !text-white !font-bold">Ana Sayfa</a>
+                <a href="index.html" class="nav-link flex items-center gap-1">Terminal <span class="bg-[#2962FF] text-white text-[9px] px-1.5 py-0.5 rounded font-black">PRO</span></a>
+                <a href="api_docs.html" class="nav-link">API Dokümanı</a>
+                <a href="pricing.html" class="nav-link">Fiyatlandırma</a>
+            </div>
+        </div>
+        <div class="flex gap-4 md:gap-6 items-center">
+            <div class="hidden md:flex items-center gap-2 text-[10px] font-bold text-gray-400 border-r border-white/10 pr-4 mr-2">
+                <div class="w-2 h-2 rounded-full bg-[#2ebd85] animate-pulse"></div>
+                API STATUS: ONLINE
+            </div>
+            
+            <button onclick="toggleTheme()" class="text-xl text-gray-400 hover:text-[#2962FF] transition hover:scale-110" title="Açık/Koyu Tema">🌓</button>
+            <a href="settings.html" class="text-xl text-gray-400 hover:text-[#2962FF] transition hover:scale-110 hidden md:block" title="Hesap Ayarları">⚙️</a>
+
+            <div id="nav-auth-buttons" class="flex items-center gap-4 ml-2">
+                <a href="login.html" class="text-sm font-bold text-gray-300 hover:text-white transition-colors hidden md:block">Giriş Yap</a>
+                <a href="register.html" class="btn-glow px-7 py-2 text-sm tracking-wide shadow-lg">API Anahtarı Al</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero-glow"></div>
+
+    <header class="max-w-7xl mx-auto px-6 pt-24 pb-20 text-center relative z-10">
+        <div class="inline-flex items-center gap-3 border border-[#2962FF]/30 bg-[#2962FF]/10 text-[#2962FF] font-bold px-5 py-2 rounded-full text-xs mb-8 uppercase tracking-widest shadow-[0_0_15px_rgba(41,98,255,0.2)]">
+            <span class="text-[14px]">⚡</span> Kurumsal Veri & Yapay Zeka Ağ Geçidi
+        </div>
+        <h2 class="text-6xl lg:text-[80px] font-black text-white mb-8 leading-[1.05] tracking-tight">
+            Kripto Piyasasını <br>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#2962FF] via-[#2ebd85] to-[#FCD535]">Milisaniyelerle</span> Yönetin.
+        </h2>
+        <p class="text-xl text-gray-400 mb-12 max-w-3xl mx-auto font-medium leading-relaxed">
+            Açık kaynaklı motorumuzun gücüne bağlanın. Milisaniyelik <b>Kafka WebSocket</b> altyapısı, <b>PostgreSQL derin arşivi</b> ve <b>XGBoost yapay zeka</b> sinyalleri ile kendi ticaret botlarınızı saniyeler içinde inşa edin.
+        </p>
+        <div class="flex flex-col sm:flex-row justify-center gap-5 items-center">
+            <a href="register.html" class="btn-glow px-10 py-4 text-lg w-full sm:w-auto flex justify-center items-center gap-3">
+                Ücretsiz Anahtar Al <span class="text-xl">→</span>
+            </a>
+            <a href="api_docs.html" class="btn-outline-glow px-10 py-4 text-lg w-full sm:w-auto flex justify-center items-center gap-3">
+                Geliştirici Dokümanı <span class="text-gray-400 font-mono text-sm">&lt;/&gt;</span>
+            </a>
+        </div>
+        
+        <div class="mt-12 flex justify-center items-center gap-6 text-sm font-bold text-gray-500">
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#f6465d] border border-[#f6465d]/50"></span> Kripto Aktif</div>
+            <div class="flex items-center gap-2 opacity-50"><span class="w-3 h-3 rounded-full bg-[#1f232b] border border-gray-600"></span> BIST & NASDAQ (Q3 '26)</div>
+        </div>
+    </header>
+
+    <section class="max-w-[1400px] mx-auto px-6 py-16 relative z-10">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-black text-white">Neden RadarPro Altyapısı?</h2>
+            <p class="text-gray-500 mt-3">Rakiplerinize karşı haksız donanım ve zeka avantajı sağlayın.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="glass-card p-8 group">
+                <div class="w-12 h-12 bg-[#2962FF]/20 rounded-xl flex items-center justify-center text-2xl mb-5 border border-[#2962FF]/30 group-hover:scale-110 transition">⚡</div>
+                <h3 class="text-lg font-bold text-white mb-2">Kafka HFT Stream</h3>
+                <p class="text-xs text-gray-400 leading-relaxed">Veritabanını atlayan Pub/Sub mimarisi ile verileri çekmezsiniz; veriler 5ms altında doğrudan size itilir (Push).</p>
+            </div>
+            <div class="glass-card p-8 group">
+                <div class="w-12 h-12 bg-[#FCD535]/20 rounded-xl flex items-center justify-center text-2xl mb-5 border border-[#FCD535]/30 group-hover:scale-110 transition">🤖</div>
+                <h3 class="text-lg font-bold text-white mb-2">XGBoost Zekası</h3>
+                <p class="text-xs text-gray-400 leading-relaxed">MLflow ile yönetilen modellerimiz, her milisaniye akıllı para yönünü (CVD) okuyarak anlık fiyat hedefleri sunar.</p>
+            </div>
+            <div class="glass-card p-8 group">
+                <div class="w-12 h-12 bg-[#2ebd85]/20 rounded-xl flex items-center justify-center text-2xl mb-5 border border-[#2ebd85]/30 group-hover:scale-110 transition">🏛️</div>
+                <h3 class="text-lg font-bold text-white mb-2">Derin Veri Arşivi</h3>
+                <p class="text-xs text-gray-400 leading-relaxed">Backtest yapmak isteyen Quant'lar için PostgreSQL sunucularımızda saklanan yıllara dayanan derin pazar arşivi.</p>
+            </div>
+            <div class="glass-card p-8 group">
+                <div class="w-12 h-12 bg-[#9c27b0]/20 rounded-xl flex items-center justify-center text-2xl mb-5 border border-[#9c27b0]/30 group-hover:scale-110 transition">🔌</div>
+                <h3 class="text-lg font-bold text-white mb-2">Kurumsal API</h3>
+                <p class="text-xs text-gray-400 leading-relaxed">Tek bir endpoint üzerinden Dinamik Veri Maskeleme (DDM). Hız limitleriniz Redis ile anlık kontrol edilir.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="max-w-6xl mx-auto px-6 py-20 relative z-10 border-t border-[#1f232b]">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl font-black text-white">Sistem Mimarisi Nasıl Çalışır?</h2>
+            <p class="text-gray-500 mt-3">Siz sadece koda odaklanın, karmaşık altyapıyı biz yönetiriz.</p>
+        </div>
+        <div class="flex flex-col md:flex-row items-center justify-between gap-8 relative">
+            <div class="hidden md:block absolute top-1/2 left-10 right-10 h-0.5 bg-gradient-to-r from-[#1f232b] via-[#2962FF] to-[#1f232b] -z-10"></div>
+            
+            <div class="glass-card p-8 text-center flex-1 w-full z-10 bg-[#050608]">
+                <div class="w-10 h-10 bg-[#1f232b] rounded-full flex items-center justify-center text-white font-black mx-auto mb-4 border border-gray-700">1</div>
+                <h4 class="text-white font-bold mb-2">Data Ingestion</h4>
+                <p class="text-xs text-gray-400">Küresel borsalardan gelen ham L1 verileri eşzamanlı olarak Apache Kafka kümelerimize alınır.</p>
+            </div>
+            <div class="glass-card p-8 text-center flex-1 w-full z-10 bg-[#050608] border-[#2962FF]/50 shadow-[0_0_30px_rgba(41,98,255,0.15)]">
+                <div class="w-10 h-10 bg-[#2962FF] rounded-full flex items-center justify-center text-white font-black mx-auto mb-4 shadow-[0_0_15px_#2962FF]">2</div>
+                <h4 class="text-white font-bold mb-2">Spark & AI Engine</h4>
+                <p class="text-xs text-gray-400">Veri anında Spark'ta işlenerek CVD (Para Akışı) hesaplanır ve XGBoost modellerine sokulup hedef fiyat üretilir.</p>
+            </div>
+            <div class="glass-card p-8 text-center flex-1 w-full z-10 bg-[#050608]">
+                <div class="w-10 h-10 bg-[#1f232b] rounded-full flex items-center justify-center text-white font-black mx-auto mb-4 border border-gray-700">3</div>
+                <h4 class="text-white font-bold mb-2">API Gateway (DDM)</h4>
+                <p class="text-xs text-gray-400">İşlenmiş veri (Alpha), API anahtarınızın yetkisine (Tier) göre maskelenerek WebSocket veya REST ile size iletilir.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="max-w-[1400px] mx-auto px-6 py-12 relative z-10 border-t border-[#1f232b]">
+        <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
+            <div>
+                <h3 class="text-3xl font-black text-white mb-2">Canlı Piyasa Gözlemi</h3>
+                <p class="text-sm text-gray-400">Aşağıdaki veriler <span class="text-[#2ebd85] font-bold animate-pulse">● Ücretsiz API (Demo)</span> katmanı üzerinden anlık olarak çekilmektedir.</p>
+            </div>
+            <a href="index.html" class="text-xs font-bold text-[#2962FF] border border-[#2962FF]/30 bg-[#2962FF]/10 px-4 py-2 rounded hover:bg-[#2962FF]/20 transition">Pro Terminali Aç ↗</a>
+        </div>
+
+        <div class="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide" id="keyword-filters">
+            <button class="filter-btn active px-4 py-1.5 rounded-full bg-[#2962FF]/20 text-[#2962FF] text-xs font-bold border border-[#2962FF]/30 transition-all" data-filter="all">Tümü</button>
+            <button class="filter-btn px-4 py-1.5 rounded-full bg-white/5 text-gray-400 text-xs font-bold border border-white/10 hover:text-white hover:bg-white/10 transition-all" data-filter="#Layer1">#Layer1</button>
+            <button class="filter-btn px-4 py-1.5 rounded-full bg-white/5 text-gray-400 text-xs font-bold border border-white/10 hover:text-white hover:bg-white/10 transition-all" data-filter="#DeFi">#DeFi</button>
+            <button class="filter-btn px-4 py-1.5 rounded-full bg-white/5 text-gray-400 text-xs font-bold border border-white/10 hover:text-white hover:bg-white/10 transition-all" data-filter="#Metaverse">#Metaverse</button>
+            <button class="filter-btn px-4 py-1.5 rounded-full bg-white/5 text-gray-400 text-xs font-bold border border-white/10 hover:text-white hover:bg-white/10 transition-all" data-filter="#Meme">#Meme</button>
+        </div>
+
+        <div class="glass-card overflow-x-auto w-full">
+            <table class="w-full text-left market-table relative">
+                <thead>
+                    <tr>
+                        <th class="w-10 text-center">#</th>
+                        <th>Kripto Varlık</th>
+                        <th class="text-right">Fiyat (L1 API)</th>
+                        <th class="text-right">1S Değişim</th>
+                        <th class="text-right">24S Değişim</th>
+                        <th class="text-right">24S Hacim</th>
+                        <th class="text-center w-32">Trend (7G)</th>
+                        <th class="text-right w-24"></th> 
+                    </tr>
+                </thead>
+                <tbody id="crypto-tbody"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-6 py-20 relative z-10">
+        <div class="bg-gradient-to-r from-[#0a0c10] to-[#141824] border border-[#2962FF]/30 rounded-2xl p-10 flex flex-wrap justify-around items-center text-center shadow-[0_0_30px_rgba(41,98,255,0.1)]">
+            <div class="m-4">
+                <div class="text-4xl font-black text-white font-mono"><5<span class="text-xl text-[#2ebd85]">ms</span></div>
+                <div class="text-xs text-gray-400 uppercase font-bold tracking-widest mt-2">Kafka WSS Gecikmesi</div>
+            </div>
+            <div class="m-4">
+                <div class="text-4xl font-black text-white font-mono">1.2B<span class="text-xl text-[#2962FF]">+</span></div>
+                <div class="text-xs text-gray-400 uppercase font-bold tracking-widest mt-2">Günlük Sorgu Kapasitesi</div>
+            </div>
+            <div class="m-4">
+                <div class="text-4xl font-black text-white font-mono">94<span class="text-xl text-[#FCD535]">%</span></div>
+                <div class="text-xs text-gray-400 uppercase font-bold tracking-widest mt-2">AI Model Doğruluğu (R2)</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="max-w-5xl mx-auto px-6 py-16 relative z-10 border-t border-[#1f232b]">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-black text-white">Sık Sorulan Sorular</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass-card p-6">
+                <h4 class="text-white font-bold mb-2 flex items-center gap-2"><span class="text-[#2962FF]">Q.</span> Sistem tam olarak ne satıyor?</h4>
+                <p class="text-gray-400 text-sm leading-relaxed">RadarPro bir borsa veya sadece grafik aracı değildir. Biz, geliştiricilerin ve fonların kendi sistemlerini inşa etmeleri için milisaniyelik ham veri ve yapay zeka sinyalleri sağlayan bir <b>API Altyapısıyız.</b></p>
+            </div>
+            <div class="glass-card p-6">
+                <h4 class="text-white font-bold mb-2 flex items-center gap-2"><span class="text-[#2962FF]">Q.</span> Kendi terminalimi kodlayabilir miyim?</h4>
+                <p class="text-gray-400 text-sm leading-relaxed">Kesinlikle! API Dokümantasyonu sayfamızda, RadarPro verisini kullanarak kendi HTML/JS grafiğinizi veya Python al-sat botunuzu nasıl yazacağınızı gösteren hazır kod şablonları bulunur.</p>
+            </div>
+            <div class="glass-card p-6">
+                <h4 class="text-white font-bold mb-2 flex items-center gap-2"><span class="text-[#2962FF]">Q.</span> Ücretsiz sürüm ile VIP farkı nedir?</h4>
+                <p class="text-gray-400 text-sm leading-relaxed">Ücretsiz sürüm sadece gecikmeli REST API fiyat verilerini sağlar ve günlük 1000 istek limitine sahiptir. VIP Pro ise Kafka WebSocket üzerinden limitsiz canlı akış ve XGBoost AI hedefleri sunar.</p>
+            </div>
+            <div class="glass-card p-6">
+                <h4 class="text-white font-bold mb-2 flex items-center gap-2"><span class="text-[#2962FF]">Q.</span> Borsa İstanbul (BIST) ne zaman eklenecek?</h4>
+                <p class="text-gray-400 text-sm leading-relaxed">Mimari çekirdeğimiz (Kafka/Spark) şu an 7/24 kesintisiz kripto piyasalarına optimize edilmiştir. BIST ve NASDAQ entegrasyonlarımız 2026 3. Çeyrek (Q3) yol haritamızda yer almaktadır.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="max-w-4xl mx-auto px-6 py-20 relative z-10 text-center">
+        <h2 class="text-4xl font-black text-white mb-6">Altyapı Bizden. Strateji Sizden.</h2>
+        <p class="text-gray-400 mb-10 text-lg">Geliştirici hesabınızı oluşturun ve API gücümüzü sisteminize anında entegre edin.</p>
+        <a href="register.html" class="btn-glow px-12 py-5 text-lg inline-block w-full sm:w-auto shadow-[0_0_40px_rgba(41,98,255,0.4)]">Anahtarınızı Oluşturun</a>
+        <p class="text-xs text-gray-500 mt-4">Kredi kartı gerekmez. Anında FREE API anahtarı.</p>
+    </section>
+
+    <footer class="bg-[#030405] border-t border-[#1f232b] py-16 px-8 mt-10 relative z-10">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            <div class="md:col-span-2">
+                <h1 class="text-2xl font-black text-white mb-4">RADAR<span class="text-[#2962FF]">PRO</span></h1>
+                <p class="text-sm text-gray-500 max-w-sm leading-relaxed">Quant geliştiriciler, veri bilimciler ve algoritmik traderlar için inşa edilmiş uçtan uca finansal veri ve yapay zeka altyapısı.</p>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4 uppercase tracking-widest text-xs">Platform</h4>
+                <ul class="space-y-3 text-sm text-gray-400 font-medium">
+                    <li><a href="api_docs.html" class="hover:text-[#2ebd85] transition">Geliştirici API'si</a></li>
+                    <li><a href="pricing.html" class="hover:text-[#2ebd85] transition">API Planları</a></li>
+                    <li><a href="index.html" class="hover:text-[#2ebd85] transition">Pro Terminal</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4 uppercase tracking-widest text-xs">Şirket</h4>
+                <ul class="space-y-3 text-sm text-gray-400 font-medium">
+                    <li><a href="#" class="hover:text-[#2ebd85] transition">Hakkımızda</a></li>
+                    <li><a href="#" class="hover:text-[#2ebd85] transition">Gizlilik Politikası</a></li>
+                    <li><a href="#" class="hover:text-[#2ebd85] transition">Sistem Durumu (Status)</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto border-t border-[#1f232b] pt-8 text-xs font-bold text-gray-600 text-center md:text-left flex flex-col md:flex-row justify-between items-center">
+            <p>Radar Global © 2026. Tüm Hakları Saklıdır.</p>
+            <div class="flex gap-6 mt-4 md:mt-0">
+                <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#2ebd85]"></span> Ingestion Server: Active</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- TEMA VE AUTH KONTROLÜ ---
+        document.addEventListener("DOMContentLoaded", () => {
+            if(localStorage.getItem('radar_theme') === 'light') document.body.classList.add('light-mode');
+
+            const key = localStorage.getItem('radar_api_key');
+            if (key) {
+                document.getElementById('nav-auth-buttons').innerHTML = `
+                    <a href="settings.html" class="btn-outline-glow px-6 py-2 text-sm font-bold tracking-wide">Paneli Aç</a>
+                `;
+            }
+        });
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('radar_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+        }
+
+        // --- TAM 25 COİN LİSTESİ ---
+        const assetList = [
+            { id: "BTCUSDT", name: "Bitcoin", sym: "BTC", img: "bitcoin-btc-logo.svg", rank: 1, tags: ["#Layer1", "#PoW"] },
+            { id: "ETHUSDT", name: "Ethereum", sym: "ETH", img: "ethereum-eth-logo.svg", rank: 2, tags: ["#Layer1", "#DeFi"] },
+            { id: "SOLUSDT", name: "Solana", sym: "SOL", img: "solana-sol-logo.svg", rank: 3, tags: ["#Layer1"] },
+            { id: "BNBUSDT", name: "BNB", sym: "BNB", img: "bnb-bnb-logo.svg", rank: 4, tags: ["#Layer1", "#Exchange"] },
+            { id: "XRPUSDT", name: "XRP", sym: "XRP", img: "xrp-xrp-logo.svg", rank: 5, tags: ["#Layer1"] },
+            { id: "ADAUSDT", name: "Cardano", sym: "ADA", img: "cardano-ada-logo.svg", rank: 6, tags: ["#Layer1", "#PoS"] },
+            { id: "AVAXUSDT", name: "Avalanche", sym: "AVAX", img: "avalanche-avax-logo.svg", rank: 7, tags: ["#Layer1", "#DeFi"] },
+            { id: "DOGEUSDT", name: "Dogecoin", sym: "DOGE", img: "dogecoin-doge-logo.svg", rank: 8, tags: ["#Meme", "#PoW"] },
+            { id: "DOTUSDT", name: "Polkadot", sym: "DOT", img: "polkadot-new-dot-logo.svg", rank: 9, tags: ["#Layer0"] },
+            { id: "LINKUSDT", name: "Chainlink", sym: "LINK", img: "chainlink-link-logo.svg", rank: 10, tags: ["#Oracle", "#DeFi"] },
+            { id: "TRXUSDT", name: "TRON", sym: "TRX", img: "tron-trx-logo.svg", rank: 11, tags: ["#Layer1"] },
+            { id: "SHIBUSDT", name: "Shiba Inu", sym: "SHIB", img: "shiba-inu-shib-logo.svg", rank: 12, tags: ["#Meme"] },
+            { id: "LTCUSDT", name: "Litecoin", sym: "LTC", img: "litecoin-ltc-logo.svg", rank: 13, tags: ["#Layer1", "#PoW"] },
+            { id: "UNIUSDT", name: "Uniswap", sym: "UNI", img: "uniswap-uni-logo.svg", rank: 14, tags: ["#DeFi", "#DEX"] },
+            { id: "BCHUSDT", name: "Bitcoin Cash", sym: "BCH", img: "bitcoin-cash-bch-logo.svg", rank: 15, tags: ["#Layer1", "#PoW"] },
+            { id: "ATOMUSDT", name: "Cosmos", sym: "ATOM", img: "cosmos-atom-logo.svg", rank: 16, tags: ["#Layer0"] },
+            { id: "XLMUSDT", name: "Stellar", sym: "XLM", img: "stellar-xlm-logo.svg", rank: 17, tags: ["#Layer1", "#Payments"] },
+            { id: "NEARUSDT", name: "NEAR Protocol", sym: "NEAR", img: "near-protocol-near-logo.svg", rank: 18, tags: ["#Layer1", "#AI"] },
+            { id: "ALGOUSDT", name: "Algorand", sym: "ALGO", img: "algorand-algo-logo.svg", rank: 19, tags: ["#Layer1", "#Enterprise"] },
+            { id: "VETUSDT", name: "VeChain", sym: "VET", img: "vechain-vet-logo.svg", rank: 20, tags: ["#Layer1", "#SupplyChain"] },
+            { id: "FILUSDT", name: "Filecoin", sym: "FIL", img: "filecoin-fil-logo.svg", rank: 21, tags: ["#Web3", "#Storage"] },
+            { id: "ICPUSDT", name: "Internet Computer", sym: "ICP", img: "internet-computer-icp-logo.svg", rank: 22, tags: ["#Layer1", "#Web3"] },
+            { id: "SANDUSDT", name: "The Sandbox", sym: "SAND", img: "the-sandbox-sand-logo.svg", rank: 23, tags: ["#Metaverse", "#Gaming"] },
+            { id: "MANAUSDT", name: "Decentraland", sym: "MANA", img: "decentraland-mana-logo.svg", rank: 24, tags: ["#Metaverse", "#Gaming"] },
+            { id: "FTMUSDT", name: "Fantom", sym: "FTM", img: "fantom-ftm-logo.svg", rank: 25, tags: ["#Layer1", "#DeFi"] }
+        ];
+
+        const tbody = document.getElementById("crypto-tbody");
+        const tickerWrap = document.getElementById("live-ticker");
+        const lastPrices = {};
+        let tickerHTML = "";
+
+        // 1. TICKER TIKLANABİLİR YAPILDI 🚀
+        assetList.forEach((asset) => {
+            tickerHTML += `<div class="ticker-item" id="tick-${asset.id}" onclick="window.location.href='coin_detail.html?symbol=${asset.id}'">
+                <img src="https://cryptologos.cc/logos/${asset.img}?v=024" class="w-4 h-4">
+                <span>${asset.sym}</span> 
+                <span id="tick-p-${asset.id}" class="text-white">...</span>
+                <span id="tick-c-${asset.id}"></span>
+            </div>`;
+        });
+        tickerWrap.innerHTML = tickerHTML + tickerHTML;
+
+        function renderTable(filterTag) {
+            tbody.innerHTML = ""; 
+            const filteredAssets = filterTag === "all" ? assetList : assetList.filter(asset => asset.tags.includes(filterTag));
+
+            filteredAssets.forEach((asset) => {
+                if (!lastPrices[asset.id]) lastPrices[asset.id] = 0;
+                
+                const rand1h = (Math.random() * 1.5 - 0.5).toFixed(2);
+                const rand7d = (Math.random() * 15 - 5).toFixed(2);
+                const color1h = rand1h >= 0 ? 'val-up' : 'val-down';
+                const sparkPath = rand7d >= 0 ? "M0,25 L10,20 L20,22 L30,15 L40,18 L50,10 L60,12 L70,5 L80,8 L90,2 L100,5" : "M0,5 L10,12 L20,8 L30,15 L40,10 L50,20 L60,18 L70,25 L80,22 L90,28 L100,25";
+                const sparkClass = rand7d >= 0 ? "sparkline-up" : "sparkline-down";
+
+                const tagsHTML = asset.tags.map(tag => `<span class="text-[9px] bg-white/5 px-1.5 py-0.5 rounded text-gray-500 mr-1">${tag}</span>`).join('');
+
+                const tr = document.createElement("tr");
+                // 2. TABLO SATIRLARI TIKLANABİLİR VE HOVER EFEKTLİ YAPILDI 🚀
+                tr.className = "group cursor-pointer border-b border-white/5 hover:bg-white/5 transition-all duration-200";
+                tr.onclick = () => window.location.href = `coin_detail.html?symbol=${asset.id}`; 
+                
+                tr.innerHTML = `
+                    <td class="text-center text-gray-500 font-mono text-xs">#${asset.rank}</td>
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <img src="https://cryptologos.cc/logos/${asset.img}?v=024" class="w-8 h-8 rounded-full bg-white/5 p-1.5 shadow-lg">
+                            <div>
+                                <span class="text-white font-bold block leading-tight text-[15px] group-hover:text-[#2962FF] transition-colors">${asset.name}</span>
+                                <div class="flex items-center mt-0.5">
+                                    <span class="text-[11px] font-bold text-gray-500 mr-2">${asset.sym}</span>
+                                    ${tagsHTML}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-right font-mono text-white text-[17px] font-bold transition-colors duration-300" id="p-${asset.id}">Yükleniyor...</td>
+                    <td class="text-right font-mono text-sm font-bold ${color1h}">${rand1h > 0 ? '▲' : '▼'} ${Math.abs(rand1h)}%</td>
+                    <td class="text-right font-mono text-[15px] font-black" id="c24-${asset.id}">--</td>
+                    <td class="text-right font-mono text-gray-300 text-[15px]" id="v-${asset.id}">--</td>
+                    <td class="text-center w-32">
+                        <svg width="100" height="30" viewBox="0 0 100 30"><path class="sparkline ${sparkClass}" d="${sparkPath}"></path></svg>
+                    </td>
+                    <td class="text-right w-24 pr-4">
+                        <span class="opacity-0 group-hover:opacity-100 text-[11px] font-black text-[#2962FF] bg-[#2962FF]/10 px-3 py-1.5 rounded transition-all duration-300">İncele ↗</span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        renderTable("all");
+
+        // FİLTRELEME BUTONLARI
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('active', 'bg-[#2962FF]/20', 'text-[#2962FF]', 'border-[#2962FF]/30');
+                    b.classList.add('bg-white/5', 'text-gray-400', 'border-white/10');
+                });
+                e.target.classList.remove('bg-white/5', 'text-gray-400', 'border-white/10');
+                e.target.classList.add('active', 'bg-[#2962FF]/20', 'text-[#2962FF]', 'border-[#2962FF]/30');
+                renderTable(e.target.getAttribute('data-filter'));
+            });
+        });
+
+        // WSS
+        const ws = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
+        ws.onmessage = (event) => {
+            JSON.parse(event.data).forEach(coin => {
+                const symbol = coin.s;
+                if (lastPrices[symbol] !== undefined) {
+                    const currentPrice = parseFloat(coin.c);
+                    const changePercent = parseFloat(coin.P);
+                    const volume = parseFloat(coin.q);
+                    
+                    let fractionDigits = currentPrice < 1 ? 4 : (currentPrice < 10 ? 3 : 2);
+                    if (symbol === "SHIBUSDT") fractionDigits = 7;
+                    
+                    const formattedPrice = "$" + currentPrice.toLocaleString('en-US', {minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits});
+                    const formattedVol = "$" + (volume / 1000000).toLocaleString('en-US', {maximumFractionDigits: 1}) + "M";
+                    const formattedChange = `${changePercent > 0 ? '▲' : '▼'} ${Math.abs(changePercent).toFixed(2)}%`;
+                    const changeClass = changePercent >= 0 ? 'val-up' : 'val-down';
+
+                    const priceEl = document.getElementById(`p-${symbol}`);
+                    if(priceEl) {
+                        if (lastPrices[symbol] !== 0 && currentPrice !== lastPrices[symbol]) {
+                            priceEl.classList.remove('price-up', 'price-down'); void priceEl.offsetWidth; 
+                            priceEl.classList.add(currentPrice > lastPrices[symbol] ? 'price-up' : 'price-down');
+                        }
+                        priceEl.textContent = formattedPrice;
+                        document.getElementById(`c24-${symbol}`).textContent = formattedChange;
+                        document.getElementById(`c24-${symbol}`).className = `text-right font-mono text-[15px] font-black ${changeClass}`;
+                        document.getElementById(`v-${symbol}`).textContent = formattedVol;
+                    }
+
+                    document.querySelectorAll(`#tick-p-${symbol}`).forEach(el => el.textContent = formattedPrice);
+                    document.querySelectorAll(`#tick-c-${symbol}`).forEach(el => { el.textContent = formattedChange; el.className = changeClass; });
+                    lastPrices[symbol] = currentPrice;
+                }
+            });
+        };
+    </script>
+</body>
+</html>

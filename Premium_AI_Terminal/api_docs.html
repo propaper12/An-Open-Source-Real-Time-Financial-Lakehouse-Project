@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarPro | Geliştirici Dokümantasyonu & API Referansı</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #020305; --border: #1f232b; --accent: #2962FF; --text-dim: #848e9c; }
+        body { background-color: var(--bg); color: #e1e4e8; font-family: 'Plus Jakarta Sans', sans-serif; scroll-behavior: smooth; background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px); background-size: 50px 50px; }
+        
+        .glass-nav { background: rgba(2, 3, 5, 0.85); border-bottom: 1px solid var(--border); backdrop-filter: blur(20px); }
+        .glass-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        
+        .sidebar-link { display: block; padding: 12px 20px; color: var(--text-dim); font-weight: 600; font-size: 13px; border-radius: 8px; border-left: 3px solid transparent; margin-bottom: 4px; transition: 0.2s; }
+        .sidebar-link:hover, .sidebar-link.active { background: rgba(41, 98, 255, 0.1); color: var(--accent); border-left-color: var(--accent); font-weight: 800; }
+
+        .code-header { background: #161a1e; color: var(--text-dim); font-size: 11px; font-weight: 800; padding: 14px 24px; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono'; display: flex; justify-content: space-between; border-radius: 16px 16px 0 0; text-transform: uppercase; }
+        pre.code-block { font-family: 'JetBrains Mono'; padding: 24px; font-size: 13px; line-height: 1.7; color: #a9b7c6; overflow-x: auto; margin: 0; background: #000; border-radius: 0 0 16px 16px;}
+        
+        .kw { color: #cc7832; font-weight: bold; } .str { color: #6a8759; } .fn { color: #ffc66d; } .cmt { color: #808080; font-style: italic; } .num { color: #6897bb; }
+
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th, .data-table td { border-bottom: 1px solid var(--border); padding: 16px 20px; text-align: left; }
+        .data-table th { color: var(--text-dim); font-size: 10px; font-weight: 900; text-transform: uppercase; background: rgba(255,255,255,0.01); }
+        
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+        .b-free { background: rgba(132, 142, 156, 0.1); color: #848e9c; border: 1px solid rgba(132, 142, 156, 0.3); }
+        .b-pro { background: rgba(41, 98, 255, 0.1); color: #2962FF; border: 1px solid rgba(41, 98, 255, 0.3); }
+        .b-vip { background: rgba(252, 213, 53, 0.1); color: #FCD535; border: 1px solid rgba(252, 213, 53, 0.3); }
+        .method-get { background: rgba(0, 255, 149, 0.1); color: #00ff95; border: 1px solid rgba(0, 255, 149, 0.3); }
+        .method-wss { background: rgba(156, 39, 176, 0.1); color: #9c27b0; border: 1px solid rgba(156, 39, 176, 0.3); }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <nav class="glass-nav flex items-center justify-between px-10 py-5 sticky top-0 z-50">
+        <a href="home.html" class="text-2xl font-black text-white">RADAR<span class="text-[#2962FF]">PRO</span></a>
+        <div class="hidden lg:flex gap-8">
+            <a href="index.html" class="text-sm font-bold text-gray-400 hover:text-white">Terminal</a>
+            <a href="pricing.html" class="text-sm font-bold text-gray-400 hover:text-white">Planlar</a>
+            <span class="text-sm font-bold text-white border-b-2 border-[#2962FF] pb-1">API Dokümanı</span>
+        </div>
+        <a href="register.html" class="bg-[#2962FF] text-white px-6 py-2 rounded-lg text-sm font-black hover:bg-blue-600 transition">Anahtar Al</a>
+    </nav>
+
+    <div class="flex flex-1 w-full max-w-[1600px] mx-auto relative">
+        
+        <aside class="w-80 border-r border-white/5 py-10 px-6 hidden lg:block sticky top-[81px] h-[calc(100vh-81px)] overflow-y-auto">
+            <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4 pl-4">Mimari Rehber</h3>
+            <a href="#architecture" class="sidebar-link active">Dinamik Uç Nokta (DDM)</a>
+            <a href="#auth-limits" class="sidebar-link">Auth & Redis Hız Limitleri</a>
+            <a href="#schema" class="sidebar-link">Kapsamlı Veri Şeması</a>
+            
+            <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-8 mb-4 pl-4">REST API (Free & Pro)</h3>
+            <a href="#rest-endpoint" class="sidebar-link">Piyasa Verisi Çekmek</a>
+            
+            <h3 class="text-[10px] font-black text-[#FCD535] uppercase tracking-widest mt-8 mb-4 pl-4">Kafka HFT (VIP Özel)</h3>
+            <a href="#wss-endpoint" class="sidebar-link">WebSocket Veri Akışı</a>
+            <a href="#vip-bot" class="sidebar-link">Yapay Zekalı Al-Sat Botu 🤖</a>
+        </aside>
+
+        <main class="flex-1 overflow-x-hidden">
+            <div class="px-8 md:px-16 pt-12 pb-32 w-full max-w-5xl">
+                
+                <section id="architecture" class="mb-24 pt-8">
+                    <div class="inline-flex items-center gap-2 border border-[#2962FF]/30 bg-[#2962FF]/10 text-[#2962FF] font-bold px-4 py-1.5 rounded-lg text-xs mb-6 uppercase">RadarPro API v8.0.0</div>
+                    <h1 class="text-5xl font-black text-white mb-6">Dinamik Veri Maskeleme (DDM)</h1>
+                    <p class="text-lg text-gray-400 leading-relaxed mb-6">
+                        Sistemimiz, yüzlerce farklı URL'ye istek atmanızı engelleyen tek bir kurumsal ağ geçidine (API Gateway) sahiptir. İsteği attığınız anda gönderdiğiniz <code>X-API-Key</code> arka planda çözümlenir. 
+                        Paketinizin seviyesine (Free, Pro, VIP) göre veri otomatik olarak filtrelenir (maskelenir) veya canlı/gecikmeli olarak sunulur.
+                    </p>
+                </section>
+
+                <section id="auth-limits" class="mb-24 pt-8">
+                    <h2 class="text-3xl font-black text-white mb-6 border-l-4 border-[#2962FF] pl-4">Kimlik Doğrulama & Hız Limitleri</h2>
+                    <p class="text-gray-400 mb-6 leading-relaxed">
+                        API anahtarınızı isteklerinize nasıl ekleyeceğiniz ve Redis tabanlı <b>Tier-Based Rate Limiting</b> sistemimizin nasıl çalıştığı aşağıda açıklanmıştır. Kurallara uyulmaması durumunda hesaplarınız kalıcı olarak engellenebilir.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div class="glass-card !p-6 border-t-4 border-t-[#00ff95]">
+                            <h4 class="text-white font-bold mb-4 flex items-center gap-3"><span class="badge method-get">REST (HTTP) İSTEKLERİ</span></h4>
+                            <p class="text-sm text-gray-500 mb-4">API anahtarı header içerisinde gönderilmelidir:</p>
+                            <code class="block bg-black p-4 rounded-lg text-[#00ff95] text-sm font-mono border border-white/10">X-API-Key: sk_live_YOUR_KEY</code>
+                        </div>
+                        <div class="glass-card !p-6 border-t-4 border-t-[#9c27b0]">
+                            <h4 class="text-white font-bold mb-4 flex items-center gap-3"><span class="badge method-wss">WEBSOCKET İSTEKLERİ</span></h4>
+                            <p class="text-sm text-gray-500 mb-4">API anahtarı URL parametresi olarak eklenmelidir:</p>
+                            <code class="block bg-black p-4 rounded-lg text-[#9c27b0] text-sm font-mono border border-white/10">?api_key=sk_live_YOUR_KEY</code>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-bold text-white mb-4 mt-10">🚨 Paketlere Göre Redis Limitleri & Cezalar</h3>
+                    <div class="glass-card !p-0 overflow-hidden">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Tier (Paket)</th><th>REST API Limiti</th><th>WebSocket (WSS)</th><th>Ceza & Hata Kodu</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge b-free">FREE</span></td>
+                                    <td class="font-bold text-white">1000 İstek / GÜN</td>
+                                    <td class="text-gray-600">Erişim Yok</td>
+                                    <td><span class="text-[#ff3b5c] font-bold">HTTP 403 (Ban)</span>: Limiti aşarsanız hesabınız sistem tarafından kalıcı olarak banlanır (`ban:{api_key}`).</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge b-pro">PRO</span></td>
+                                    <td class="font-bold text-white">10 İstek / SANİYE</td>
+                                    <td class="text-gray-600">Erişim Yok</td>
+                                    <td><span class="text-[#FCD535] font-bold">HTTP 429</span>: Saniyede 10 isteği geçerseniz kısa süreli engelleme alırsınız.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge b-vip">VIP</span></td>
+                                    <td class="font-bold text-white">5 İstek / SANİYE</td>
+                                    <td class="text-[#00ff95] font-bold">Sınırsız İtme (Push)</td>
+                                    <td>REST'te saniyede 5 geçilirse <span class="text-[#FCD535] font-bold">HTTP 429</span>. WSS hattında limit yoktur.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="schema" class="mb-24 pt-8">
+                    <h2 class="text-3xl font-black text-white mb-6 border-l-4 border-gray-500 pl-4">JSON Veri Şeması ve Maskeleme Kuralları</h2>
+                    <p class="text-gray-400 mb-8 leading-relaxed">
+                        Aşağıdaki tabloda, uç noktamızın döndürdüğü JSON verisinin yapısı bulunmaktadır. Eğer PRO kullanıcısıysanız, VIP verilere (AI, CVD) erişiminiz engellenir ve bu sütunlar arka planda <code>record.pop()</code> edilerek JSON'dan silinir.
+                    </p>
+                    
+                    <div class="glass-card !p-0 overflow-hidden">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>JSON Key</th><th>Veri Tipi</th><th>Gereksinim</th><th>Açıklama</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>symbol</td><td>String</td><td><span class="badge b-free">FREE+</span></td>
+                                    <td class="text-gray-400 text-sm">İşlem Çifti. Free pakette sadece BTCUSDT çalışır.</td>
+                                </tr>
+                                <tr>
+                                    <td>processed_time</td><td>Timestamp</td><td><span class="badge b-free">FREE+</span></td>
+                                    <td class="text-gray-400 text-sm">Verinin Kafka tarafından işlendiği an. <span class="text-[#ff3b5c] font-bold">FREE pakette bu süre daima 15 dakika geçmiştedir.</span></td>
+                                </tr>
+                                <tr>
+                                    <td>average_price</td><td>Float</td><td><span class="badge b-free">FREE+</span></td>
+                                    <td class="text-gray-400 text-sm">L1 ağırlıklı piyasa fiyatı.</td>
+                                </tr>
+                                <tr>
+                                    <td>volume_usd</td><td>Float</td><td><span class="badge b-free">FREE+</span></td>
+                                    <td class="text-gray-400 text-sm">Amerikan Doları cinsinden o anki işlem hacmi.</td>
+                                </tr>
+                                <tr>
+                                    <td>volatility</td><td>Float</td><td><span class="badge b-pro">PRO+</span></td>
+                                    <td class="text-gray-400 text-sm">Belirli bir zaman dilimi içindeki yüzdesel dalgalanma (Türbülans göstergesi).</td>
+                                </tr>
+                                <tr class="bg-[#FCD535]/5 border-t border-[#FCD535]/20">
+                                    <td class="!text-[#FCD535]">predicted_price</td><td>Float</td><td><span class="badge b-vip">VIP</span></td>
+                                    <td class="text-gray-300 text-sm"><b>[XGBoost Zekası]</b> Gelecek zaman dilimi için hesaplanmış yapay zeka hedef fiyatı. Algoritmik botlar sinyal olarak bunu kullanır.</td>
+                                </tr>
+                                <tr class="bg-[#FCD535]/5">
+                                    <td class="!text-[#FCD535]">cvd</td><td>Float</td><td><span class="badge b-vip">VIP</span></td>
+                                    <td class="text-gray-300 text-sm"><b>[Spark Motoru]</b> Kümülatif Hacim Deltası. Piyasa yapıcının piyasaya para mı soktuğunu (+) yoksa para mı çıkardığını (-) gösterir.</td>
+                                </tr>
+                                <tr class="bg-[#FCD535]/5">
+                                    <td class="!text-[#FCD535]">trade_side</td><td>String</td><td><span class="badge b-vip">VIP</span></td>
+                                    <td class="text-gray-300 text-sm">Emrin ağırlıklı yönü: <code>"BUY"</code> veya <code>"SELL"</code>.</td>
+                                </tr>
+                                <tr class="bg-[#FCD535]/5">
+                                    <td class="!text-[#FCD535]">is_buyer_maker</td><td>Boolean</td><td><span class="badge b-vip">VIP</span></td>
+                                    <td class="text-gray-300 text-sm">Limit emri verenin mi yoksa piyasa emri verenin mi alıcı olduğunu belirler. Order Flow botları için kritik.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <hr class="border-white/10 my-16">
+
+                <section id="rest-endpoint" class="mb-24 pt-8">
+                    <h2 class="text-3xl font-black text-white mb-6 border-l-4 border-[#2962FF] pl-4">REST API (Free & PRO İçin)</h2>
+                    <p class="text-gray-400 mb-6 leading-relaxed">
+                        Piyasa verisini statik olarak "çekmek" (polling) için kullanılır. Gönderdiğiniz API anahtarına göre arka plandaki `ingestion_api.py` sistemi şunları yapar:
+                        <br>1. FREE Anahtarsa: Veritabanında 15 dakika geriye gider, veriyi çeker ve verir.
+                        <br>2. PRO Anahtarsa: Canlı veriyi çeker ancak AI ve CVD verilerini JSON'dan silerek verir.
+                    </p>
+                    
+                    <div class="flex items-center gap-4 mb-6 p-4 bg-[#161a1e] rounded-lg border border-border w-fit">
+                        <span class="badge method-get">GET</span>
+                        <code class="text-white font-mono text-sm">https://api.radarglobal.com/api/v1/market/{symbol}</code>
+                    </div>
+
+                    <div class="glass-card !p-0 overflow-hidden mb-6">
+                        <div class="code-header"><span>fetch_rest_data.py</span><span>Python</span></div>
+                        <pre class="code-block"><span class="kw">import</span> requests
+
+<span class="cmt"># API anahtarınız neyse (FREE, PRO, VIP), sistem ona göre davranır.</span>
+API_KEY = <span class="str">"sk_live_YOUR_KEY"</span>
+SYMBOL = <span class="str">"BTCUSDT"</span>
+URL = <span class="str">f"https://api.radarglobal.com/api/v1/market/{SYMBOL}"</span>
+
+headers = {<span class="str">"X-API-Key"</span>: API_KEY}
+response = requests.get(URL, headers=headers)
+
+<span class="kw">if</span> response.status_code == <span class="num">200</span>:
+    payload = response.json()
+    <span class="fn">print</span>(<span class="str">f"Kullanıcı Seviyesi:"</span>, payload[<span class="str">'tier'</span>])     <span class="cmt"># Çıktı: FREE veya PRO</span>
+    <span class="fn">print</span>(<span class="str">f"Sistem Gecikmesi:"</span>, payload[<span class="str">'delay'</span>])    <span class="cmt"># Çıktı: '15 Minutes' veya 'Real-Time'</span>
+    
+    data = payload[<span class="str">'data'</span>]
+    <span class="fn">print</span>(<span class="str">f"Fiyat:"</span>, data[<span class="str">'average_price'</span>])
+    <span class="fn">print</span>(<span class="str">f"Zaman:"</span>, data[<span class="str">'processed_time'</span>])
+    
+<span class="kw">elif</span> response.status_code == <span class="num">429</span>:
+    <span class="fn">print</span>(<span class="str">"🚨 Redis Limit: Çok hızlı istek atıyorsunuz!"</span>)
+<span class="kw">elif</span> response.status_code == <span class="num">403</span>:
+    <span class="fn">print</span>(<span class="str">"⛔ BAN: Günlük limiti aştınız."</span>)</pre>
+                    </div>
+
+                    <h4 class="text-white font-bold mb-4 mt-8">📝 Örnek JSON Yanıtı (FREE TIER)</h4>
+                    <pre class="bg-black p-6 rounded-xl border border-white/5 text-gray-400 font-mono text-sm leading-relaxed">
+{
+  "status": "success",
+  "tier": "FREE",
+  "delay": "15 Minutes",
+  "data": {
+    "symbol": "BTCUSDT",
+    "average_price": 68450.20,
+    "volume_usd": 125400.00,
+    "processed_time": "2026-03-09T09:30:00Z"
+  }
+}</pre>
+                </section>
+
+                <hr class="border-white/10 my-16">
+
+                <section id="wss-endpoint" class="mb-24 pt-8">
+                    <div class="flex items-center gap-4 mb-6">
+                        <h2 class="text-3xl font-black text-[#FCD535] border-l-4 border-[#FCD535] pl-4">VIP: Kafka WebSocket Akışı</h2>
+                    </div>
+                    <p class="text-gray-400 mb-6 leading-relaxed">
+                        Geleceğin HFT mimarisi. Veriyi REST ile sormazsınız; bizdeki Kafka tüketici düğümleri, piyasada yeni bir işlem olduğu anda o veriyi <b>XGBoost modellerimizden geçirip</b> doğrudan size fırlatır (Broadcast).
+                    </p>
+
+                    <div class="flex items-center gap-4 mb-6 p-4 bg-[#161a1e] rounded-lg border border-[#FCD535]/30 w-fit shadow-[0_0_20px_rgba(252,213,53,0.1)]">
+                        <span class="badge method-wss">WSS</span>
+                        <code class="text-white font-mono text-sm">wss://api.radarglobal.com/api/v1/stream/{symbol}?api_key=sk_live_...</code>
+                    </div>
+
+                    <h4 class="text-white font-bold mb-4 mt-8">📝 Örnek İtme (Push) Mesajı (VIP)</h4>
+                    <pre class="bg-black p-6 rounded-xl border border-[#FCD535]/20 text-[#FCD535] font-mono text-sm leading-relaxed mb-10 shadow-[0_0_15px_rgba(252,213,53,0.05)]">
+{
+  "type": "VIP_STREAM",
+  "data": {
+    "symbol": "BTCUSDT",
+    "average_price": 71200.50,
+    "volume_usd": 850000.00,
+    "volatility": 1.2,
+    "predicted_price": 72500.00,  // SADECE VIP
+    "cvd": 154000.00,             // SADECE VIP
+    "trade_side": "BUY",          // SADECE VIP
+    "is_buyer_maker": false
+  }
+}</pre>
+
+                    <h3 id="vip-bot" class="text-2xl font-black text-white mb-6 pt-10 border-t border-white/5 mt-10">🤖 Kurumsal Seviye: Otonom AI Botu Kodlama</h3>
+                    <p class="text-gray-400 mb-6 leading-relaxed">
+                        Sıradan bir bot sadece fiyat düşüşüne bakar. RadarPro VIP kullanıcısı ise <b>Akıllı Para Akışını (CVD)</b> ve <b>Yapay Zeka Hedefini (predicted_price)</b> kullanarak aşağıdaki gibi profesyonel bir asenkron bot yazar.
+                    </p>
+
+                    <div class="glass-card !p-0 overflow-hidden border-[#2ebd85]/40 shadow-[0_0_30px_rgba(46,189,133,0.1)]">
+                        <div class="code-header" style="background: rgba(46,189,133,0.1);"><span>radar_quant_bot.py</span><span>Python (Asyncio)</span></div>
+                        <pre class="code-block"><span class="kw">import</span> asyncio
+<span class="kw">import</span> websockets
+<span class="kw">import</span> json
+<span class="cmt"># import ccxt  # Binance veya Bybit emir gönderimi için kütüphane</span>
+
+<span class="kw">class</span> <span class="cls">RadarQuantBot</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, api_key, symbol):
+        <span class="kw">self</span>.api_key = api_key
+        <span class="kw">self</span>.symbol = symbol
+        <span class="kw">self</span>.in_position = <span class="kw">False</span>
+        <span class="kw">self</span>.entry_price = <span class="num">0</span>
+        <span class="cmt"># self.exchange = ccxt.binance({'apiKey': 'BorsaKey', 'secret': 'BorsaSecret'})</span>
+
+    <span class="kw">async def</span> <span class="fn">listen_and_trade</span>(<span class="kw">self</span>):
+        url = <span class="str">f"wss://api.radarglobal.com/api/v1/stream/{self.symbol}?api_key={self.api_key}"</span>
+        
+        <span class="kw">try</span>:
+            <span class="kw">async with</span> websockets.connect(url) <span class="kw">as</span> ws:
+                <span class="fn">print</span>(<span class="str">f"🟢 Kafka HFT Bağlantısı Kuruldu: {self.symbol} dinleniyor..."</span>)
+                
+                <span class="kw">while True</span>:
+                    response = json.loads(<span class="kw">await</span> ws.recv())
+                    
+                    <span class="cmt"># VIP Anahtar kontrolü başarısız olursa API Gateway bağlantıyı kapatır</span>
+                    <span class="kw">if</span> <span class="str">'error'</span> <span class="kw">in</span> response:
+                        <span class="fn">print</span>(<span class="str">f"🔴 Güvenlik İhlali: {response['error']}"</span>)
+                        <span class="kw">break</span>
+
+                    data = response[<span class="str">'data'</span>]
+                    price = float(data[<span class="str">'average_price'</span>])
+                    ai_target = float(data.get(<span class="str">'predicted_price'</span>, price))
+                    cvd = float(data.get(<span class="str">'cvd'</span>, <span class="num">0</span>))
+                    
+                    <span class="cmt"># ========================================================</span>
+                    <span class="cmt"># 🧠 OTONOM KARAR MOTORU (ALGORITHM)</span>
+                    <span class="cmt"># ========================================================</span>
+                    
+                    <span class="cmt"># LONG (ALIM) STRATEJİSİ:</span>
+                    <span class="cmt"># Şart 1: XGBoost AI Modeli, fiyatın %2 artacağını tahmin etmeli</span>
+                    <span class="cmt"># Şart 2: CVD > 100,000 olmalı (Piyasa Yapıcılar mal topluyor olmalı)</span>
+                    
+                    <span class="kw">if not</span> <span class="kw">self</span>.in_position:
+                        <span class="kw">if</span> ai_target > (price * <span class="num">1.02</span>) <span class="kw">and</span> cvd > <span class="num">100000</span>:
+                            <span class="fn">print</span>(<span class="str">f"\n🚀 AI ALIM SİNYALİ ONAYLANDI!"</span>)
+                            <span class="fn">print</span>(<span class="str">f"Fiyat: {price} | AI Hedef: {ai_target} | Net Akış (CVD): {cvd}"</span>)
+                            
+                            <span class="cmt"># self.exchange.create_market_buy_order(self.symbol, amount=0.1)</span>
+                            <span class="kw">self</span>.in_position = <span class="kw">True</span>
+                            <span class="kw">self</span>.entry_price = price
+                            
+                    <span class="cmt"># ÇIKIŞ (TAKE PROFIT / STOP LOSS) STRATEJİSİ:</span>
+                    <span class="kw">elif</span> <span class="kw">self</span>.in_position:
+                        <span class="cmt"># Kar Al (%1.5 yukarıda)</span>
+                        <span class="kw">if</span> price >= <span class="kw">self</span>.entry_price * <span class="num">1.015</span>:
+                            <span class="fn">print</span>(<span class="str">f"\n💰 TAKE PROFIT: Fiyat {price} seviyesine ulaştı. Satış yapılıyor."</span>)
+                            <span class="kw">self</span>.in_position = <span class="kw">False</span>
+                            
+                        <span class="cmt"># Zarar Kes (AI Yanılırsa %0.5 aşağıda kol kes)</span>
+                        <span class="kw">elif</span> price <= <span class="kw">self</span>.entry_price * <span class="num">0.995</span>:
+                            <span class="fn">print</span>(<span class="str">f"\n🩸 STOP LOSS PATLADI: Fiyat {price}. Çıkış yapılıyor."</span>)
+                            <span class="kw">self</span>.in_position = <span class="kw">False</span>
+                            
+        <span class="kw">except</span> Exception <span class="kw">as</span> e:
+            <span class="fn">print</span>(<span class="str">f"Bağlantı koptu veya hata oluştu: {e}"</span>)
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="cmt"># Kullanıcı portalından aldığınız VIP anahtarı yapıştırın</span>
+    bot = RadarQuantBot(api_key=<span class="str">"sk_live_VIP_KEY_HERE"</span>, symbol=<span class="str">"BTCUSDT"</span>)
+    asyncio.run(bot.listen_and_trade())</pre>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+    
+    <footer class="bg-[#030405] border-t border-white/5 py-12 px-10 relative z-10 text-center md:text-left flex flex-col md:flex-row justify-between items-center">
+        <p class="text-xs font-bold text-gray-600">Radar Global © 2026. API Version 8.0.0</p>
+        <span class="flex items-center gap-2 text-xs font-bold text-gray-500 mt-4 md:mt-0"><span class="w-2 h-2 rounded-full bg-[#00ff95] animate-pulse"></span> Redis Control Plane: Active</span>
+    </footer>
+
+    <script>
+        // ScrollSpy Menü Takibi
+        document.addEventListener("DOMContentLoaded", () => {
+            const sections = document.querySelectorAll("section");
+            const navLinks = document.querySelectorAll(".sidebar-link");
+            window.addEventListener("scroll", () => {
+                let current = "";
+                sections.forEach((section) => {
+                    if (window.scrollY >= section.offsetTop - 200) current = section.getAttribute("id");
+                });
+                navLinks.forEach((link) => {
+                    link.classList.remove("active");
+                    if (link.getAttribute("href").includes(current)) link.classList.add("active");
+                });
+            });
+        });
+    </script>
+</body>
+</html>
