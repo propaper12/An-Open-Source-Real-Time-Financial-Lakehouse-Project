@@ -1,4 +1,3 @@
-
 <h1 align="center">RadarPro: Real-Time Crypto Intelligence API & MLOps Platform</h1>
 
 <p align="center">
@@ -143,7 +142,7 @@ Plaintext
 ├── devops_config/              # 🐳 Container Orchestration & Monitoring
 │   ├── docker-compose.yaml      # 15+ Mikroservisin Global Orkestrasyonu 
 │   ├── Dockerfile.spark         # Apache Spark & Delta Lake Optimize Edilmiş İmaj 
-│   ├── Dockerfile.api           # FastAPI & Ingestion Gateway İmajı [cite: 
+│   ├── Dockerfile.api           # FastAPI & Ingestion Gateway İmajı 
 │   ├── Dockerfile.ui            # Streamlit Dashboard İmajı 
 │   ├── prometheus.yml           # Altyapı Metrik Toplama Yapılandırması 
 │   └── start_unix.sh            # Unix/Mac DevOps Command Center Scripti 
@@ -157,6 +156,49 @@ Plaintext
 
 
 
+## 🛰️ TITAN Update (v3.7): Telegram Intelligence Node
+
+RadarPro ekosistemi, artık sadece web üzerinden değil, dünyanın en hızlı Telegram bot altyapısıyla da hizmet veriyor. Bu güncelleme ile "Pulse Edit" teknolojisi kullanılarak Telegram üzerinden **milisaniyelik gecikmeyle canlı veri akışı** sağlanmıştır.
+
+### 🤖 Bot Özellikleri
+- **📈 Ultra-Hızlı Akış (`/canli`):** 2 saniyede bir kendini güncelleyen, her coin için kesintisiz canlı analiz mesajları.
+- **⚖️ Global Arbitraj Matrisi (`/arbitraj`):** 10 büyük borsa arasında 25 coin için anlık fiyat makaslarını (spread) tarayan otonom radar.
+- **🐋 Akıllı Balina Analizi:** CVD ve Imbalance verilerini yorumlayarak `BALİNA HAREKETİ` veya `PERAKENDE AKIŞ` gibi otomatik etiketleme sistemi.
+- **🧠 Spark AI Entegrasyonu:** Gemini tabanlı kuant analizlerini doğrudan Telegram üzerinden sorgulama.
+
+---
+
+## 🛠️ Telegram Bot Kurulumu (Open-Source Rehberi)
+
+RadarPro Telegram botunu kendi sunucunuzda çalıştırmak için aşağıdaki adımları takip ederek kendi API anahtarlarınızı oluşturmalısınız:
+
+### 1. Bot Token Alımı (BotFather)
+1. Telegram'da [@BotFather](https://t.me/BotFather) hesabına gidin.
+2. `/newbot` komutunu gönderin ve botunuza bir isim verin.
+3. BotFather'ın size verdiği `HTTP API Token` kodunu kopyalayın. Bu sizin `TELEGRAM_BOT_TOKEN` değerinizdir.
+
+### 2. API ID ve API Hash Alımı
+Telegram botunun asenkron motoru ile haberleşmesi için resmi Telegram API bilgilerine ihtiyacınız var:
+1. [my.telegram.org](https://my.telegram.org) adresine gidin.
+2. Telefon numaranızla giriş yapın ve 'API development tools' sekmesine tıklayın.
+3. Yeni bir uygulama oluşturun (App title ve Short name rastgele olabilir).
+4. Size verilen `App api_id` ve `App api_hash` değerlerini kaydedin.
+
+### 3. Yapılandırma (.env)
+Proje kök dizinindeki `.env` dosyasına bu bilgileri ekleyin:
+```env
+TELEGRAM_BOT_TOKEN=buraya_bot_token
+TELEGRAM_API_ID=buraya_api_id
+TELEGRAM_API_HASH=buraya_api_hash
+```
+
+### 4. Başlatma
+Docker kullananlar için sistem otomatik olarak başlar. Manuel başlatmak veya güncellemeleri çekmek için:
+```bash
+docker compose up -d --build telegram_bot
+```
+
+---
 
 ## 🏗️ Mimari Tasarım (Architecture)
 
@@ -586,10 +628,4 @@ ading Ekran g<img width="2792" height="1537" alt="Ekran görüntüsü 2026-03-05
 <img width="2766" height="1550" alt="Ekran görüntüsü 2026-04-11 201700" src="https://github.com/user-attachments/assets/5d0efaeb-5e4d-4759-a502-825eacfdaf1c" />
 <img width="2782" height="1546" alt="Ekran görüntüsü 2026-04-11 201710" src="https://github.com/user-attachments/assets/bbd20167-43ae-4107-889d-11b2ffe5bc43" />
 <img width="2733" height="1633" alt="Ekran görüntüsü 2026-04-11 201608" src="https://github.com/user-attachments/assets/c81c305f-cf03-4067-b85f-ed6360b4a17e" />
-
-
-
-
-
-
 <img width="2772" height="1476" alt="Ekran görüntüsü 2026-02-05 170637" src="https://github.com/user-attachments/assets/6548da13-a35f-4d57-ac58-c02da3c0969e" />
