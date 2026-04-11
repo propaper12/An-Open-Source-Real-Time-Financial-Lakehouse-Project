@@ -33,7 +33,7 @@ async def redis_listener():
                 command = message['data'].decode('utf-8')
                 if command == "RELOAD_MODELS":
                     model_cache.clear()
-                    print("🚨 [MULTI-WORKER SYNC]: Yeni model saptandı. Local RAM Cache temizlendi!")
+                    print("[MULTI-WORKER SYNC]: Yeni model saptandı. Local RAM Cache temizlendi!")
     except Exception as e:
         print(f"Redis Dinleyici Hatası: {e}")
 
